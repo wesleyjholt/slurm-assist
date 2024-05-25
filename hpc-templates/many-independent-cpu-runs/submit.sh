@@ -10,7 +10,7 @@
 #          - so that each CPU will sequentially run an equal number of cases (100 in this case). 
 
 # ==== User inputs ==== #
-ARRAY_SIZE=3  # Number of jobs to submit (Only pass in one of BATCH_SIZE or ARRAY_SIZE)
+ARRAY_SIZE=3  # Number of jobs to submit
 NTASKS_PER_JOB=5  # Number of CPUs per job
 MEM_PER_CPU=512M  # Memory per CPU
 MEM_PER_CPU_POST=512M  # Memory per CPU for post-processing
