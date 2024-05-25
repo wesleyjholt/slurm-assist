@@ -160,4 +160,5 @@ cython_debug/
 #.idea/
 
 *zzz_old*
+# *results.pkl*
 hpc-templates/many-independent-cpu-runs-mpi/*
