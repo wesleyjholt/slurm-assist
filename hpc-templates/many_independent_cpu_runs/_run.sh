@@ -9,7 +9,8 @@
 BATCHED_DATA_DIR=$1
 BATCHED_RESULTS_DIR=$2
 OUTPUT_FILE=$3
-ENVIRONMENT=$4
+HPC_DIR=$4
+ENVIRONMENT=$5
 # ===================== #
 
 # Set up tracking
@@ -28,7 +29,7 @@ cd $SLURM_SUBMIT_DIR
 echo Running job from directory: `pwd`
 
 # Run computations
-mpirun -n $SLURM_NTASKS python3 run.py --job-id $(($SLURM_ARRAY_TASK_ID - 1)) -i $BATCHED_DATA_DIR -o $BATCHED_RESULTS_DIR
+mpirun -n $SLURM_NTASKS python3 -m ${HPC_DIR}.run --job-id $(($SLURM_ARRAY_TASK_ID - 1)) -i $BATCHED_DATA_DIR -o $BATCHED_RESULTS_DIR
 
 # shut down the resource monitors
 kill -s INT $CPU_PID

@@ -29,7 +29,6 @@ def main(
                 res_ij = pkl.load(f)
             for res_ijl in res_ij:
                 results.append(res_ijl)
-                print('res_ijl:', res_ijl)
             print(f'Loaded results_{i}_{j}.pkl')
             
         except:

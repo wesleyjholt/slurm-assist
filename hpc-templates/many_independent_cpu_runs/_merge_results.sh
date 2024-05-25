@@ -10,7 +10,8 @@ ARRAY_SIZE=$1
 NTASKS_PER_JOB=$2
 BATCHED_RESULTS_DIR=$3
 OUTPUT_FILE=$4
-ENVIRONMENT=$5
+HPC_DIR=$5
+ENVIRONMENT=$6
 # ===================== #
 
 # Set up tracking
@@ -29,7 +30,7 @@ cd $SLURM_SUBMIT_DIR
 echo Running job from directory: `pwd`
 
 # Run computations
-python3 merge_results.py -nj $ARRAY_SIZE -np $NTASKS_PER_JOB -i $BATCHED_RESULTS_DIR -o $OUTPUT_FILE
+python3 -m ${HPC_DIR}.merge_results -nj $ARRAY_SIZE -np $NTASKS_PER_JOB -i $BATCHED_RESULTS_DIR -o $OUTPUT_FILE
 
 # shut down the resource monitors
 kill -s INT $CPU_PID
