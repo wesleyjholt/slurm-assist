@@ -1,18 +1,9 @@
 #!/bin/bash
 
-#SBATCH --job-name=job
-#SBATCH --time=0:10:00
-#SBATCH --mem-per-cpu=512M
+#SBATCH --job-name=merge_results
 
-# ===================== #
-# USER INPUTS
-ARRAY_SIZE=$1
-NTASKS_PER_JOB=$2
-BATCHED_RESULTS_DIR=$3
-OUTPUT_FILE=$4
-HPC_DIR=$5
-ENVIRONMENT=$6
-# ===================== #
+source ${HPC_DIR}/config.sh
+source ${HPC_DIR}/${RUN_NAME}/config.sh
 
 # Set up tracking
 module load utilities monitor

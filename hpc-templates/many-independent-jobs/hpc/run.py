@@ -9,39 +9,12 @@ import pickle as pkl
 from mpi4py import MPI
 from typing import Union, Optional
 import sys
+import importlib
+
+run_single = importlib.import_module(f"hpc.{os.environ['RUN_NAME']}.run_single").run_single
 
 MPIComm = Union[MPI.Intracomm, MPI.Intercomm]
-
-## THIS FUNCTION NEEDS TO BE IMPLEMENTED BY YOU.
-def run_batch(
-    mpi_comm: MPIComm,
-    job_id: int,
-    batch_id: int,
-    data_batch: list,
-):
-    """Run a batch of data through user-defined processing.
-
-    Returns a list of same length as `data_batch` containing the result for each batch.
     
-    Parameters
-    ----------
-    mpi_comm: MPI communicator
-    data_batch: list
-        List of data to run
-    
-    Returns
-    -------
-    results: list
-        List of results
-    exit_flags: list
-        List of exit flags (0: success, 1: failure)
-    """
-    ## REPLACE WITH YOUR CODE
-    return data_batch, [0]*len(data_batch)
-
-
-### DO NOT MODIFY BELOW THIS LINE ###
-# --------------------------------- #
 def main(
     job_id: int, 
     input_dir: str, 
@@ -49,7 +22,7 @@ def main(
 ):
     """Main entry point.
 
-    Note that job_id is the job array ID, not the SLURM job ID.
+    Note that job_id is the job array task ID, not the SLURM job ID.
     """
     if ("OMPI_COMM_WORLD_RANK" not in os.environ) | ("OMPI_COMM_WORLD_SIZE" not in os.environ):
         sys.exit("Program exited. Required environment variables are missing. OMPI_COMM_WORLD_RANK is {} and OMPI_COMM_WORLD_SIZE is {}.".format(os.environ.get("OMPI_COMM_WORLD_RANK"), os.environ.get("OMPI_COMM_WORLD_SIZE")))
@@ -68,26 +41,50 @@ def _run(
     data_batch_filepath = os.path.join(input_dir, f'data_batch_{job_id}_{batch_id}.pkl')
     with open(data_batch_filepath, 'rb') as f:
         ids_and_data_batch = pkl.load(f)
-    ids, data_batch = list(zip(*ids_and_data_batch))  # unzip
-    
-    # Extract metadata and run
-    # if meta_file is not None:
-    #     with open(meta_file, 'rb') as f:
-    #         meta = pkl.load(f)
-    #     result, status = run_batch(MPI.COMM_SELF, job_id, batch_id, data_batch, meta)
-    # else: # no meta file
+    if len(ids_and_data_batch) == 0:
+        result = []
+        ids = []
+    else:
+        ids, data_batch = list(zip(*ids_and_data_batch))  # unzip
 
-    # Run the batch through processing
-    result, status = run_batch(MPI.COMM_SELF, job_id, batch_id, data_batch)
+        # Run the batch through processing
+        result = _run_batch(MPI.COMM_SELF, job_id, batch_id, data_batch)
     
     # Save results
     results_batch_filepath = os.path.join(output_dir, f'results_{job_id}_{batch_id}.pkl')
-    results_status_filepath = os.path.join(output_dir, f'status_{job_id}_{batch_id}.pkl')
     os.makedirs(output_dir, exist_ok=True)
     with open(results_batch_filepath, 'wb') as f:
-        pkl.dump(list(zip(ids, result)), f)
-    with open(results_status_filepath, 'wb') as f:
-        pkl.dump(list(zip(ids, status)), f)    
+        pkl.dump(list(zip(ids, result)), f)   
+
+def _run_batch(
+    mpi_comm: MPIComm,
+    job_id: int,
+    batch_id: int,
+    data_batch: list,
+):
+    """Run a batch of data through user-defined processing.
+
+    Returns a list of same length as `data_batch` containing the result for each batch.
+    
+    Parameters
+    ----------
+    mpi_comm: MPI communicator
+    job_id: int
+        Job array rask ID
+    batch_id: int
+    data_batch: list
+        List of data to run
+    
+    Returns
+    -------
+    results: list
+        List of results
+    """
+    results = []
+    for data in data_batch:
+        results.append(run_single(data))
+    return results
+
 
 if __name__=='__main__':
     import argparse

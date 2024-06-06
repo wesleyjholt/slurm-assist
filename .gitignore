@@ -161,4 +161,5 @@ cython_debug/
 
 *zzz_old*
 # *results.pkl*
-hpc-templates/many-independent-cpu-runs-mpi/*
+# hpc-templates/many-independent-cpu-runs-mpi/*
+hpc-templates/scratch/

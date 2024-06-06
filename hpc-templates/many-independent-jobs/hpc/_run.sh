@@ -1,17 +1,14 @@
 #!/bin/bash
 
-#SBATCH --job-name=job
-#SBATCH --time=0:10:00
-#SBATCH --mem-per-cpu=512M
+#SBATCH --job-name=run
 
-# ===================== #
-# USER INPUTS
-BATCHED_DATA_DIR=$1
-BATCHED_RESULTS_DIR=$2
-OUTPUT_FILE=$3
-HPC_DIR=$4
-ENVIRONMENT=$5
-# ===================== #
+if [ -z "$RUN_NAME" ]; then
+  echo "Error: No variable named RUN_NAME."
+  exit 1
+fi
+
+source ${HPC_DIR}/config.sh
+source ${HPC_DIR}/${RUN_NAME}/config.sh
 
 # Set up tracking
 module load utilities monitor
