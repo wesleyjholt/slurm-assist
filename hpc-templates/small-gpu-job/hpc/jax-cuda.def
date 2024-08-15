@@ -1,0 +1,36 @@
+Bootstrap: docker
+From: ubuntu:22.04
+
+%post
+    # Non-interactive installation
+    export DEBIAN_FRONTEND=noninteractive
+
+    # Install python and pip
+    apt-get -y update && \
+    apt-get install -y software-properties-common curl && \
+    add-apt-repository -y ppa:deadsnakes/ppa && \
+    apt-get -y update
+    apt-get install -y python3.11 python3.11-distutils python3.11-dev
+    curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11
+    python3.11 -m pip install --upgrade pip
+
+    # Install JAX
+    python3.11 -m pip install --upgrade "jax[cuda12]"
+    
+    # Install other python packages
+    python3.11 -m pip install diffrax blackjax optax numpyro seaborn pyyaml-include
+
+    # Clean up
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+    # Print to show completion
+    NOW=`date`
+    echo "export NOW=\"${NOW}\"" >> $APPTAINER_ENVIRONMENT
+
+%runscript
+    echo "Container was created $NOW"
+    exec python3.11 "$@"
+
+%help
+    This .def file installs jax and some jax-related python packages on ubuntu.

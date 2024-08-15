@@ -8,33 +8,36 @@ DESCRIPTION:
 
 import os
 import pickle as pkl
+import csv
 from typing import *
 from numpy.typing import *
 
 def main(
-    input_dir: str,
-    output_file: str,
+    results_dir: str,
+    tmp_dir: str,
     num_jobs: int,
     num_proc_per_job: int
 ):
     """Collect/merge the results."""
     # Collect results for each batch of computation and append to a single list.
+    results_batch_dir = os.path.join(tmp_dir, 'results_batch')
     results = []
     for k in range(num_jobs*num_proc_per_job):
         i = k // num_proc_per_job
         j = k % num_proc_per_job
-        results_batch_filepath = os.path.join(input_dir, f'results_{i}_{j}.pkl')
+        results_batch_filepath = os.path.join(results_batch_dir, f'{i}_{j}.pkl')
         try:
             with open(results_batch_filepath, 'rb') as f:
                 res_ij = pkl.load(f)
             for res_ijl in res_ij:
                 results.append(res_ijl)
-            print(f'Loaded results_{i}_{j}.pkl')
+            print(f'Loaded {results_batch_filepath}')
             
         except:
-            print(f'Failed to load results_{i}_{j}.pkl')
+            print(f'Failed to load {results_batch_filepath}')
     
     # Save results to a single file
+    output_file = os.path.join(results_dir, 'results.pkl')
     with open(output_file, 'wb') as f:
         pkl.dump(results, f)
         
@@ -44,19 +47,19 @@ if __name__=='__main__':
     import time
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--input-dir', type=str)
-    parser.add_argument('-o', '--output-file', type=str)
+    parser.add_argument('--results', type=str)
+    parser.add_argument('--tmp', type=str)
     parser.add_argument('-nj', '--num-jobs', type=int)
     parser.add_argument('-np', '--num-proc-per-job', type=int)
-    args = vars(parser.parse_args())
+    args = parser.parse_args()
 
     print('\nMerging results...')
     t1 = time.time()
     main(
-        input_dir=args['input_dir'],
-        output_file=args['output_file'],
-        num_jobs=args['num_jobs'],
-        num_proc_per_job=args['num_proc_per_job']
+        results_dir=args.results,
+        tmp_dir=args.tmp,
+        num_jobs=args.num_jobs,
+        num_proc_per_job=args.num_proc_per_job
     )
     t2 = time.time()
     print('...done.')

@@ -1,0 +1,37 @@
+BootStrap: localimage
+From: /apps/base_images/MPI/openmpi/openmpi_4.1.4_pmi2.sif
+
+%environment
+    export PYTHONPATH=/usr/local/src/gmsh-4.13.1-Linux64-sdk/lib:$PYTHONPATH
+    export PATH=/usr/local/src/gmsh-4.13.1-Linux64-sdk/bin:$PATH
+
+%post
+    apt-get -y update && \
+    apt-get install -y software-properties-common curl && \
+    add-apt-repository -y ppa:deadsnakes/ppa && \
+    apt-get -y update
+
+    # Install python and pip
+    apt-get install -y python3.11 python3.11-distutils python3.11-dev
+    curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11
+
+    # Install gmsh (mesh generation software for PDE solvers)
+    apt-get update && \
+    apt-get install -y wget build-essential libglu1-mesa libgl1 libxrender1 libxcursor-dev libxft-dev libxinerama-dev && \
+    cd /usr/local/src
+    wget -nc  http://gmsh.info/bin/Linux/gmsh-4.13.1-Linux64-sdk.tgz
+    tar -xf gmsh-4.13.1-Linux64-sdk.tgz 
+    rm gmsh-4.13.1-Linux64-sdk.tgz
+
+    # Install other python packages
+    python3.11 -m pip install --upgrade pip
+    python3.11 -m pip install diffrax numpyro seaborn pyvista trame interpax sympy ipykernel beartype pyyaml imageio[ffmpeg] openpyxl jaxopt optax mpi4py pygmsh 
+    python3.11 -m pip install git+https://github.com/wesleyjholt/fipy
+    python3.11 -m pip install git+https://github.com/wesleyjholt/hiermodelutils.git
+
+    # Clean up
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+%runscript
+    exec python3.11 "$@"

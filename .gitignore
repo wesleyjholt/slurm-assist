@@ -163,3 +163,4 @@ cython_debug/
 # *results.pkl*
 # hpc-templates/many-independent-cpu-runs-mpi/*
 hpc-templates/scratch/
+results*.txt
