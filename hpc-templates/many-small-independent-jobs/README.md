@@ -72,3 +72,7 @@ source pull_from_remote.sh $RUN_NAME $PROJECT_ROOT_DIR
 ```
 
 - **Note:** If any of the jobs fail, you can still merge all the results together by running `source hpc/merge_results.sh <run_name>`. You will also need to cancel `merge_results` job by running `scancel <job_id>`. Again, this is only necessary if a job fails.
+
+- **TODO:** 
+    - Merge results automatically if any job fails.
+    - For a batch where some runs fail, allow the non-failed runs to still be merged with the rest of the results.
