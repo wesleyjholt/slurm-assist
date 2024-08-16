@@ -10,7 +10,7 @@ In particular, these templates are designed specifically for using
 
 ## Dependencies
 
-You will need Python 3.5+ on your local machine to run these push/pull scripts. You will also need the [gitignore_parser](https://github.com/mherrmann/gitignore_parser/tree/master) python package:
+You will need Python 3.5+ on your local machine to run the push/pull scripts. You will also need the [gitignore_parser](https://github.com/mherrmann/gitignore_parser/tree/master) python package:
 
 ```bash
 pip install gitignore_parser
