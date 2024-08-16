@@ -1,12 +1,7 @@
 #!/bin/bash
 
-if [ -z "$1" ]; then
-  echo "Error: No run name provided."
-  echo "Usage: $0 <RUN_NAME>"
-fi
-
-# Set up environment
-export RUN_NAME=$1
+set_env_vars=`python3 parse_args.py $@`
+eval "$set_env_vars"
 source _do_all_config.sh
 
 # Clean up from previous runs

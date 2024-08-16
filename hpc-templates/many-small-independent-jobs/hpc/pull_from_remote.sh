@@ -1,19 +1,7 @@
 #!/bin/bash
 
-# Check input arguments
-USAGE_HINT="Usage: $0 <run_name> <project-root-dir>"
-if [ -z "$1" ]; then
-  echo "Error: No run name provided."
-  echo $USAGE_HINT
-fi
-if [ -z "$2" ]; then
-  echo "Error: No project root directory provided."
-  echo $USAGE_HINT
-fi
-
-# Set up environment
-export RUN_NAME=$1
-export PROJECT_ROOT_DIR=$2
+set_env_vars=`python3 parse_args.py $@`
+eval "$set_env_vars"
 source _do_all_config.sh
 
 current_dir=$(pwd)
