@@ -31,7 +31,7 @@ PROJECT_ROOT_DIR=../
 nano $PROJECT_ROOT_DIR/.hpc-ignore
 
 # Move files to remote machine
-source push_to_remote.sh $PROJECT_ROOT_DIR
+source push_to_remote.sh $RUN_NAME $PROJECT_ROOT_DIR
 ```
 
 ### 4. Log into remote cluster.
