@@ -13,7 +13,6 @@
 if [ -z "$1" ]; then
   echo "Error: No run name provided."
   echo "Usage: $0 <RUN_NAME>"
-  exit 1
 fi
 
 # Set up environment

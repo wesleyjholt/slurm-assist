@@ -5,12 +5,10 @@ USAGE_HINT="Usage: $0 <run_name> <project-root-dir>"
 if [ -z "$1" ]; then
   echo "Error: No run name provided."
   echo $USAGE_HINT
-  exit 1
 fi
 if [ -z "$2" ]; then
   echo "Error: No project root directory provided."
   echo $USAGE_HINT
-  exit 1
 fi
 
 # Set up environment
