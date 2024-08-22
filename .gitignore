@@ -164,3 +164,5 @@ cython_debug/
 # hpc-templates/many-independent-cpu-runs-mpi/*
 hpc-templates/scratch/
 results*.txt
+checkpoints/
+scratch/
