@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PROJECT_NAME=small-gpu-job-example
+PROJECT_NAME=serial-gpu-jobs
 CODE_VERSION=1.0
 USERNAME=holtw  # Replace with your username
 CLUSTER=gilbreth

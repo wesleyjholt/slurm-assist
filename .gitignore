@@ -166,4 +166,4 @@ hpc-templates/scratch/
 results*.txt
 checkpoints/
 scratch/
-templates/chained-gpu-job/
+templates/single-gpu-job/

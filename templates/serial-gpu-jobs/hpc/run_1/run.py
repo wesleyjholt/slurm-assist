@@ -9,7 +9,7 @@ if __name__ == '__main__':
     #=============================
 
     # Note: Everything in args.results directory will be moved back to the local machine.
-    #       Everything in args.tmp directory will be deleted upon completion.
+    #       Everything in args.tmp directory will be deleted upon job completion.
     
     # ADD YOUR CODE HERE!
     import sys; sys.path.append('..')    
