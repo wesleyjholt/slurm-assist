@@ -68,5 +68,5 @@ source submit.sh --run-name $RUN_NAME
 ### 7. Pull results to local machine (once job is finished).
 ```bash
 ### Back in local machine ###
-source pull_from_remote.sh --run-name $RUN_NAME --project-root-directory $PROJECT_ROOT_DIR --pull-supplementary
+source pull_from_remote.sh --run-name $RUN_NAME --project-root-directory $PROJECT_ROOT_DIR
 ```
