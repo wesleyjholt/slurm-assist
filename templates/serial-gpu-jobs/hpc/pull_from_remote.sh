@@ -12,8 +12,4 @@ PATH_TO_REMOTE=/scratch/${CLUSTER}/${USERNAME}/${PROJECT_NAME}/v${CODE_VERSION}/
 PATH_TO_LOCAL=./${RUN_NAME}
 
 # Pull results to local machine
-if [ "$PULL_SUPPLEMENTAL" = 1 ]; then
-    ssh ${USERNAME}@${CLUSTER}.rcac.purdue.edu "tar cf - -C ${PATH_TO_REMOTE} results" | tar xf - -C ${PATH_TO_LOCAL}
-else
-    ssh ${USERNAME}@${CLUSTER}.rcac.purdue.edu "tar cf - -C ${PATH_TO_REMOTE} results/results.pkl" | tar xf - -C ${PATH_TO_LOCAL}
-fi
+ssh ${USERNAME}@${CLUSTER}.rcac.purdue.edu "tar cf - -C ${PATH_TO_REMOTE} results" | tar xf - -C ${PATH_TO_LOCAL}

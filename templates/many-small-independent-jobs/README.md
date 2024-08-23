@@ -31,7 +31,7 @@ PROJECT_ROOT_DIR=../
 nano $PROJECT_ROOT_DIR/.hpc-ignore
 
 # Move files to remote machine
-source push_to_remote.sh $RUN_NAME $PROJECT_ROOT_DIR
+source push_to_remote.sh --run-name $RUN_NAME --project-root-dir $PROJECT_ROOT_DIR
 ```
 
 ### 4. Log into remote cluster.
@@ -47,10 +47,10 @@ ssh <username>@<remote_machine>
 cd path/to/hpc
 
 # Change to the name of your container definition file
-CONTAINER_DEF=jax.def  
+CONTAINER_DEF=jax-mpi.def  
 
 # Change to the name of the container image (as set in hpc_config_global.sh)
-CONTAINER_IMAGE=jax.sif
+CONTAINER_IMAGE=jax-mpi.sif
 
 # Build container
 apptainer build $CONTAINER_IMAGE $CONTAINER_DEF
@@ -62,13 +62,15 @@ apptainer build $CONTAINER_IMAGE $CONTAINER_DEF
 RUN_NAME=run_1
 
 # Submit the job
-source submit.sh $RUN_NAME
+source submit.sh --run-name $RUN_NAME
 ```
 
 ### 7. Pull results to local machine (once job is finished).
 ```bash
 ### Back in local machine ###
-source pull_from_remote.sh $RUN_NAME $PROJECT_ROOT_DIR
+source pull_from_remote.sh --run-name $RUN_NAME --project-root-directory $PROJECT_ROOT_DIR  --pull-supplementary
+
+# Note: Leave out the `--pull-supplementary` flag if you don't want to pull supplementary files.
 ```
 
 - **Note:** If any of the jobs fail, you can still merge all the results together by running `source hpc/merge_results.sh <run_name>`. You will also need to cancel `merge_results` job by running `scancel <job_id>`. Again, this is only necessary if a job fails.

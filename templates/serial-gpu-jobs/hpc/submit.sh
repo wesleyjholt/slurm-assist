@@ -17,9 +17,13 @@ else
 fi
 
 # Submit first job
-jobid=$(sbatch $args _run.sh | awk '{print $4}')
+output=$(sbatch $args _run.sh)
+echo "$output"
+jobid=$(echo "$output" | awk '{print $4}')
 
 # Submit remaining jobs
 for ((i=1; i<NUM_SERIAL_JOBS; i++)); do
-    jobid=$(sbatch $args $dependency:$jobid _run.sh | awk '{print $4}')
+    output=$(sbatch $args $dependency:$jobid _run.sh)
+    echo "$output"
+    jobid=$(echo "$output" | awk '{print $4}')
 done
