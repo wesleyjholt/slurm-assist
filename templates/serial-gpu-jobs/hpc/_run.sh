@@ -23,7 +23,7 @@ mkdir -p $RESULTS_DIR
 mkdir -p $TMP_DIR
 
 # Run the command(s) to execute the job
-apptainer run --nv $CONTAINER_IMAGE "$RUN_NAME/run.py" --results $RESULTS_DIR --tmp $TMP_DIR
+apptainer run --nv $CONTAINER_IMAGE "$RUN_NAME/run.py" --results $RESULTS_DIR --tmp $TMP_DIR $@
 
 # Clean up
 rm -rf $TMP_DIR

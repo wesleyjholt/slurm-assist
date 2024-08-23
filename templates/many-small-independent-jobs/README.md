@@ -24,10 +24,8 @@ nano $RUN_NAME/hpc_config.sh
 PROJECT_ROOT_DIR=../
 
 # Create/modify the .hpc-ignore file (optional)
-# This file moving unwanted files/directories to the remote cluster. 
-# It searches the regex patterns in `hpc-ignore` from being copied 
-# to the cluster. For example, to ignore all `*.pyc` files, add `\.pyc$`
-# to `hpc-ignore`.
+# This file prevents moving unwanted files/directories to the remote cluster. 
+# It has the same format as a .gitignore file.
 nano $PROJECT_ROOT_DIR/.hpc-ignore
 
 # Move files to remote machine

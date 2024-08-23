@@ -17,12 +17,14 @@ else
 fi
 
 # Submit first job
-output=$(sbatch $args _run.sh)
+run_args=$(sed -n '1p' $RUN_ARGS_FILE)
+output=$(sbatch $args _run.sh $run_args)
 echo "$output"
 jobid=$(echo "$output" | awk '{print $4}')
 
 # Submit remaining jobs
 for ((i=1; i<NUM_SERIAL_JOBS; i++)); do
+    run_args=$(sed -n $i'p' $RUN_ARGS_FILE)
     output=$(sbatch $args $dependency:$jobid _run.sh)
     echo "$output"
     jobid=$(echo "$output" | awk '{print $4}')

@@ -16,6 +16,9 @@ RUN_NAME=run_1
 
 # Edit the configuration file for your run
 nano $RUN_NAME/hpc_config.sh
+
+# Edit input arguments to the run script (each line for a different run)
+nano $RUN_NAME/run_args
 ```
 
 ### 3. Move files to remote machine.
@@ -24,10 +27,8 @@ nano $RUN_NAME/hpc_config.sh
 PROJECT_ROOT_DIR=../
 
 # Create a .hpc-ignore file (optional)
-# This file moving unwanted files/directories to the remote cluster. 
-# It searches the regex patterns in `hpc-ignore` from being copied 
-# to the cluster. For example, to ignore all `*.pyc` files, add `\.pyc$`
-# to `hpc-ignore`.
+# This file prevents moving unwanted files/directories to the remote cluster. 
+# It has the same format as a .gitignore file.
 nano $PROJECT_ROOT_DIR/.hpc-ignore
 
 # Move files to remote machine
