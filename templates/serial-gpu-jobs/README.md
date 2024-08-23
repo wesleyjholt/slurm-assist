@@ -1,4 +1,4 @@
-# How to run a "small" GPU job
+# How to run serial GPU jobs
 
 ### 1. Navigate to `hpc` directory.
 ```bash
