@@ -9,20 +9,40 @@
 #          - each using 100 different CPUs (NTASKS_PER_JOB)
 #          - so that each CPU will sequentially run an equal number of cases (100 in this case). 
 
+echo 1
 set_env_vars=`python3 parse_args.py $@`
+echo 2
 eval "$set_env_vars"
+echo 3
 source _do_all_config.sh
+echo 4
 
 # Clean up from previous runs
 rm -rf $RESULTS_DIR
 rm -rf $TMP_DIR
+echo 5
 
 # Split data into batches
 apptainer run $CONTAINER_IMAGE split_data.py -nj $ARRAY_SIZE -np $NTASKS_PER_JOB -i $INPUT_FILE --results $RESULTS_DIR --tmp $TMP_DIR
+echo 6
 
 # Run main computations
-SUBMIT_CONFIRMATION=`sbatch -A $ACCOUNT --array 1-$ARRAY_SIZE --mem-per-cpu $MEM_PER_CPU --ntasks $NTASKS_PER_JOB --time $WALLTIME _run.sh $@`
-JOB_ID=$(echo "$SUBMIT_CONFIRMATION" | grep -o -E '[0-9]+')
+output=`sbatch -A $ACCOUNT --array 1-$ARRAY_SIZE --mem-per-cpu $MEM_PER_CPU --ntasks $NTASKS_PER_JOB --time $WALLTIME _run.sh $@`
+echo "$output"
+jobid=$(echo "$output" | awk '{print $4}')
+echo 7
 
 # Merge results
-sbatch --dependency afterok:$JOB_ID -A $ACCOUNT --mem-per-cpu $MEM_PER_CPU_POST --ntasks 1 --time $WALLTIME_POST _merge_results.sh $@
+output=`sbatch --dependency afterok:$jobid -A $ACCOUNT --mem-per-cpu $MEM_PER_CPU_MERGE --ntasks 1 --time $WALLTIME_MERGE _merge_results.sh $@`
+echo "$output"
+jobid=$(echo "$output" | awk '{print $4}')
+echo 8
+
+# Move results
+if [ $MOVE_RESULTS -eq 1 ]; then
+    if [ ! -f $SSH_KEY_PATH ]; then
+        echo -e $SSH_KEY_PATH'\n\n' | ssh-keygen -f $SSH_KEY_PATH -P ''
+        ssh-copy-id -i ${SSH_KEY_PATH}.pub $USERNAME@$MOVE_RESULTS_TO_CLUSTER.rcac.purdue.edu
+    fi
+    sbatch --dependency afterok:$jobid -A $ACCOUNT --array 1-$ARRAY_SIZE_MOVE --mem-per-cpu $MEM_PER_CPU_MOVE --ntasks 1 --time $WALLTIME_MOVE _move_results.sh $@
+fi

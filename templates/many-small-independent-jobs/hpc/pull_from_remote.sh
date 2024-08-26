@@ -11,9 +11,10 @@ RELATIVE_PATH_TO_HPC_DIR=${current_dir#$parent_dir/}
 PATH_TO_REMOTE=/scratch/${CLUSTER}/${USERNAME}/${PROJECT_NAME}/v${CODE_VERSION}/${RELATIVE_PATH_TO_HPC_DIR}/${RUN_NAME}
 PATH_TO_LOCAL=./${RUN_NAME}
 
-# Pull results to local machine
 if [ "$PULL_SUPPLEMENTAL" = 1 ]; then
-    ssh ${USERNAME}@${CLUSTER}.rcac.purdue.edu "tar cf - -C ${PATH_TO_REMOTE} results" | tar xf - -C ${PATH_TO_LOCAL}
+    ssh $USERNAME@$HOST "tar cf - -C ${PATH_TO_REMOTE} results" | tar xf - -C ${PATH_TO_LOCAL}
+    # rsync -avz ${USERNAME}@${CLUSTER}.rcac.purdue.edu:${PATH_TO_REMOTE}/results ${PATH_TO_LOCAL}
 else
-    ssh ${USERNAME}@${CLUSTER}.rcac.purdue.edu "tar cf - -C ${PATH_TO_REMOTE} results/results.pkl" | tar xf - -C ${PATH_TO_LOCAL}
+    ssh $USERNAME@$HOST "tar cf - -C ${PATH_TO_REMOTE} results/results.pkl" | tar xf - -C ${PATH_TO_LOCAL}
+    # rsync -avz ${USERNAME}@${CLUSTER}.rcac.purdue.edu:${PATH_TO_REMOTE}/results/results.pkl ${PATH_TO_LOCAL}
 fi

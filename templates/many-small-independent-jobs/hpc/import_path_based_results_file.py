@@ -1,3 +1,5 @@
+# TODO: Add a description of the script
+
 import os
 import pickle
 

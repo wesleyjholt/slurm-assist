@@ -12,4 +12,4 @@ PATH_TO_REMOTE=/scratch/${CLUSTER}/${USERNAME}/${PROJECT_NAME}/v${CODE_VERSION}/
 PATH_TO_LOCAL=./${RUN_NAME}
 
 # Pull results to local machine
-ssh ${USERNAME}@${CLUSTER}.rcac.purdue.edu "tar cf - -C ${PATH_TO_REMOTE} results" | tar xf - -C ${PATH_TO_LOCAL}
+ssh $USERNAME@$HOST "tar cf - -C ${PATH_TO_REMOTE} results" | tar xf - -C ${PATH_TO_LOCAL}

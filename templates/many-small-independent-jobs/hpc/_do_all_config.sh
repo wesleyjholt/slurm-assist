@@ -7,3 +7,5 @@ export TMP_DIR=${RUN_NAME}/tmp  # Directory to store temporary files
 
 source hpc_config_global.sh
 source ${RUN_NAME}/hpc_config.sh
+
+export SSH_KEY_PATH=~/.ssh/${CLUSTER}_to_${MOVE_RESULTS_TO_CLUSTER}
