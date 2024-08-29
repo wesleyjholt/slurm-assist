@@ -1,0 +1,12 @@
+#!/bin/sh -l
+# FILENAME:  simple_job_submission_file
+
+#SBATCH -A myqueuename
+#SBATCH --nodes=1 
+#SBATCH --time=0:30:00
+#SBATCH --job-name simple_test
+
+# Print the hostname of the compute node on which this job is running.
+/bin/hostname
+
+echo $@

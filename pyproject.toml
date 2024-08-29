@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "hpc_templates"
+name = "slurm_assist"
 dynamic = ["version"]
 description = ''
 readme = "README.md"
@@ -29,10 +29,10 @@ dependencies = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/hpc_templates"]
+packages = ["src/slurm_assist"]
 
 # [project.scripts]
-# mycommand = "hpc_templates.main:main"
+# mycommand = "slurm_assist.main:main"
 
 [project.optional-dependencies]
 test = [
@@ -41,26 +41,26 @@ test = [
 ]
 
 [project.urls]
-Documentation = "https://github.com/Wesley Holt/hpc-templates#readme"
-Issues = "https://github.com/Wesley Holt/hpc-templates/issues"
-Source = "https://github.com/Wesley Holt/hpc-templates"
+Documentation = "https://github.com/Wesley Holt/slurm-assist#readme"
+Issues = "https://github.com/Wesley Holt/slurm-assist/issues"
+Source = "https://github.com/Wesley Holt/slurm-assist"
 
 [tool.hatch.version]
-path = "src/hpc_templates/__about__.py"
+path = "src/slurm_assist/__about__.py"
 
 [tool.hatch.envs.types]
 extra-dependencies = [
   "mypy>=1.0.0",
 ]
 [tool.hatch.envs.types.scripts]
-check = "mypy --install-types --non-interactive {args:src/hpc_templates tests}"
+check = "mypy --install-types --non-interactive {args:src/slurm_assist tests}"
 
 [tool.coverage.run]
-source_pkgs = ["hpc_templates", "tests"]
+source_pkgs = ["slurm_assist", "tests"]
 branch = true
 parallel = true
 omit = [
-  "src/hpc_templates/__about__.py",
+  "src/slurm_assist/__about__.py",
 ]
 
 [tool.coverage.paths]
