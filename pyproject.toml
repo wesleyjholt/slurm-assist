@@ -31,8 +31,8 @@ dependencies = [
 [tool.hatch.build.targets.wheel]
 packages = ["src/hpc_templates"]
 
-[project.scripts]
-mycommand = "hpc_templates.main:main"
+# [project.scripts]
+# mycommand = "hpc_templates.main:main"
 
 [project.optional-dependencies]
 test = [
