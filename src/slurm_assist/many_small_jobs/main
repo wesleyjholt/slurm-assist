@@ -9,8 +9,11 @@ module load utilities monitor
 monitor cpu percent >cpu-percent-run.log &
 CPU_PID=$!
 
+# Get apptainer image
+container_image=`python3 parse_image_from_args.py $@`
+
 # Run computations
-srun --mpi=pmi2 apptainer run $CONTAINER_IMAGE run.py --job-id $SLURM_ARRAY_TASK_ID $@
+srun --mpi=pmi2 apptainer run $container_image run.py --job-id $SLURM_ARRAY_TASK_ID $@
 
 # Shut down the resource monitors
 kill -s INT $CPU_PID

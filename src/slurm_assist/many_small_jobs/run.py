@@ -82,7 +82,7 @@ if __name__=='__main__':
     parser.add_argument('--batched-results-dir', type=str)
     parser.add_argument('--split-results-dir', type=str)
     parser.add_argument('--job-array', type=str)
-    args = parser.parse_args()
+    args, unknown_args = parser.parse_known_args()
 
     t1 = time.time()
     main(

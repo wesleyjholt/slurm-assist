@@ -2,7 +2,6 @@
 
 #SBATCH --job-name=merge
 #SBATCH --ntasks=1
-#SBATCH --time=0:15:00
 
 module purge
 
@@ -11,8 +10,11 @@ module load utilities monitor
 monitor cpu percent >cpu-percent-merge.log &
 CPU_PID=$!
 
+# Get apptainer image
+container_image=`python3 parse_image_from_args.py $@`
+
 # Run computations
-apptainer run $CONTAINER_IMAGE merge_results.py $@
+apptainer run $container_image merge_results.py $@
 
 # Shut down the resource monitors
 kill -s INT $CPU_PID

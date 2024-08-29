@@ -74,26 +74,26 @@ def get_value_from_nested_dict(nested_dict, key_list):
         value = value[key]
     return value
 
-def submit_slurm_job(job_script: str, slurm_args: dict, job_script_args: Optional[list] = None, verbose=True) -> int:
-    """Submit a SLURM job using sbatch."""
-    # Convert args to a string
-    slurm_args = ' '.join([f'--{k} {parse_field(v)}' for k, v in slurm_args.items()])
-    if job_script_args is not None:
-        job_script_args = ' '.join([parse_field(arg) for arg in job_script_args])
-    else:
-        job_script_args = ''
+# def submit_slurm_job(job_script: str, slurm_args: dict, job_script_args: Optional[list] = None, verbose=True) -> int:
+#     """Submit a SLURM job using sbatch."""
+#     # Convert args to a string
+#     slurm_args = ' '.join([f'--{k} {parse_field(v)}' for k, v in slurm_args.items()])
+#     if job_script_args is not None:
+#         job_script_args = ' '.join([parse_field(arg) for arg in job_script_args])
+#     else:
+#         job_script_args = ''
     
-    # Submit the job
-    output = subprocess.run(["sbatch", slurm_args, job_script, job_script_args], capture_output=True, text=True)
+#     # Submit the job
+#     output = subprocess.run(["sbatch", slurm_args, job_script, job_script_args], capture_output=True, text=True)
 
-    if verbose:
-        print(output.args, '\n\n')
-        print(output.stdout, end='\n\n\n')
+#     if verbose:
+#         print(output.args, '\n\n')
+#         print(output.stdout, end='\n\n\n')
 
-    # Get the job ID
-    job_id = int(output.stdout.split()[-1])
+#     # Get the job ID
+#     job_id = int(output.stdout.split()[-1])
 
-    return job_id
+#     return job_id
 
 def estimate_total_time(num_runs, single_run_time, job_array_size, n_tasks_per_job, safety_factor=1.0):
     """Estimates the amount of time a job will take.
