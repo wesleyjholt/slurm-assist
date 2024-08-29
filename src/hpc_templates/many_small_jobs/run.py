@@ -5,35 +5,25 @@ PURPOSE: Run a batches data through user-defined processing.
 
 import os
 import pickle as pkl
-import importlib
+from typing import Callable
 from mpi4py import MPI
 
-run_single = importlib.import_module(f"{os.environ['RUN_NAME']}.run_single").run_single
-    
 def main(
-    job_id: int, 
-    results_dir: str,
-    tmp_dir: str
+    array_id: int, 
+    single_run_fn: Callable[[int, list, str], list],
+    batched_data_dir: str,
+    batched_results_dir: str,
+    split_results_dir: str,
+    job_array: list[int]
 ):
     """Main entry point.
 
-    Note that job_id is the job array task ID, not the SLURM job ID.
+    Note that array_id is the job array task ID, not the SLURM job ID.
     """
-    rank = MPI.COMM_WORLD.rank
-    data_batch_dir = os.path.join(tmp_dir, 'data_batch')
-    results_batch_dir = os.path.join(tmp_dir, 'results_batch')
-    results_supplemental_dir = os.path.join(results_dir, 'results_supplemental')
-    _run(job_id, rank, data_batch_dir, results_batch_dir, results_supplemental_dir)
+    batch_id = MPI.COMM_WORLD.rank
 
-def _run(
-    job_id: int, 
-    batch_id: int,
-    data_batch_dir: str,
-    results_batch_dir: str,
-    results_supplemental_dir: str
-):
     # Load data batch
-    data_batch_filepath = os.path.join(data_batch_dir, f'{job_id}_{batch_id}.pkl')
+    data_batch_filepath = os.path.join(batched_data_dir, f'data_{job_array[array_id]}_{batch_id}.pkl')
     with open(data_batch_filepath, 'rb') as f:
         ids_and_data_batch = pkl.load(f)
     if len(ids_and_data_batch) == 0:
@@ -43,18 +33,19 @@ def _run(
         ids, data_batch = list(zip(*ids_and_data_batch))  # unzip
 
         # Run the batch through processing
-        result = _run_batch(ids, data_batch, results_supplemental_dir)
+        result = _run_batch(single_run_fn, ids, data_batch, split_results_dir)
     
     # Save results
-    results_batch_filepath = os.path.join(results_batch_dir, f'{job_id}_{batch_id}.pkl')
-    os.makedirs(results_batch_dir, exist_ok=True)
+    results_batch_filepath = os.path.join(batched_results_dir, f'results_{job_array[array_id]}_{batch_id}.pkl')
+    os.makedirs(batched_results_dir, exist_ok=True)
     with open(results_batch_filepath, 'wb') as f:
         pkl.dump(list(zip(ids, result)), f)
 
 def _run_batch(
+    single_run_fn: Callable[[int, list, str], list],
     run_ids: int,
     data_batch: list,
-    results_supplemental_dir: str
+    split_results_dir: str
 ):
     """Run a batch of data through user-defined processing.
 
@@ -76,7 +67,7 @@ def _run_batch(
     """
     results = []
     for id, data in zip(run_ids, data_batch):
-        results.append(run_single(id, data, results_supplemental_dir))
+        results.append(single_run_fn(id, data, split_results_dir))
     return results
 
 
@@ -86,15 +77,21 @@ if __name__=='__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--job-id', type=str)
-    parser.add_argument('--results', type=str)
-    parser.add_argument('--tmp', type=str)
+    parser.add_argument('--single-run-fn', type=str)
+    parser.add_argument('--batched-data-dir', type=str)
+    parser.add_argument('--batched-results-dir', type=str)
+    parser.add_argument('--split-results-dir', type=str)
+    parser.add_argument('--job-array', type=str)
     args = parser.parse_args()
 
     t1 = time.time()
     main(
         job_id=args.job_id, 
-        results_dir=args.results,
-        tmp_dir=args.tmp
+        single_run_fn=args.single_run_fn,
+        batched_data_dir=args.batched_data_dir,
+        batched_results_dir=args.batched_results_dir,
+        split_results_dir=args.split_results_dir,
+        job_array=args.job_array
     )
     t2 = time.time()
     print('Total run time: {:.5f}'.format(t2 - t1))

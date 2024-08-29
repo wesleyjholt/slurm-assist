@@ -1,0 +1,12 @@
+input_data_file: data.txt
+results_dir: results
+main_slurm_args: 
+  array: 1-10
+  time: 00:20:00
+  mem-per-cpu: 1024M
+  ntasks: 3
+  account: standby
+merge_slurm_args:
+  time: 00:10:00
+  mem-per-cpu: 1024M
+  account: standby

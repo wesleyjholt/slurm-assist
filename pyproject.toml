@@ -3,12 +3,73 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "hpc-templates"
-version = "0.1.0"
+name = "hpc_templates"
+dynamic = ["version"]
+description = ''
 readme = "README.md"
-requires-python = ">=3.11,<3.12"
+requires-python = ">=3.8"
 license = "MIT"
+keywords = []
+authors = [
+  { name = "Wesley Holt", email = "wesleyjholt@gmail.com" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
 dependencies = [
-  "equinox",
-  "ciclo"
+  "pyyaml"
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hpc_templates"]
+
+[project.scripts]
+mycommand = "hpc_templates.main:main"
+
+[project.optional-dependencies]
+test = [
+  "pandas",
+  "mpi4py"
+]
+
+[project.urls]
+Documentation = "https://github.com/Wesley Holt/hpc-templates#readme"
+Issues = "https://github.com/Wesley Holt/hpc-templates/issues"
+Source = "https://github.com/Wesley Holt/hpc-templates"
+
+[tool.hatch.version]
+path = "src/hpc_templates/__about__.py"
+
+[tool.hatch.envs.types]
+extra-dependencies = [
+  "mypy>=1.0.0",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:src/hpc_templates tests}"
+
+[tool.coverage.run]
+source_pkgs = ["hpc_templates", "tests"]
+branch = true
+parallel = true
+omit = [
+  "src/hpc_templates/__about__.py",
+]
+
+[tool.coverage.paths]
+hpc_templates = ["src/hpc_templates", "*/hpc-templates/src/hpc_templates"]
+tests = ["tests", "*/hpc-templates/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
 ]
