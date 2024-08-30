@@ -18,8 +18,8 @@ DESCRIPTION:
     and j corresponds to the cpu/process number within a job.
 """
 
-import pickle as pkl
 import os
+from .utils import load_csv, save_pickle
 
 def main(
     input_file: str,
@@ -32,8 +32,7 @@ def main(
     num_jobs = len(job_array)
     
     # Import the data file
-    with open(input_file, 'rb') as f:
-        data = pkl.load(f)
+    data = load_csv(input_file)
     
     # Give each data entry a unique ID
     data = list(zip(range(len(data)), data))  # [(id, data), ...]
@@ -52,8 +51,7 @@ def main(
         j = k % ntasks_per_job
         data_batch_filepath = os.path.join(batched_data_dir, f'data_{job_array[i]}_{j}.pkl')
         print(f'Saving data batch {job_array[i]}_{j} to {data_batch_filepath} ... ', end='')
-        with open(data_batch_filepath, 'wb') as f:
-            pkl.dump(batch, f)
+        save_pickle(batch, data_batch_filepath)
         print('done.')
     
     # Return the number of data batches

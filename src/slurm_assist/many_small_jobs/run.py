@@ -7,10 +7,11 @@ import os
 import pickle as pkl
 from typing import Callable
 from mpi4py import MPI
+from .utils import load_pickle, save_pickle
 
 def main(
     array_id: int, 
-    single_run_fn: Callable[[int, list, str], list],
+    single_run_fn: Callable[[int, list[str], str], list[str]],
     batched_data_dir: str,
     batched_results_dir: str,
     split_results_dir: str,
@@ -24,8 +25,7 @@ def main(
 
     # Load data batch
     data_batch_filepath = os.path.join(batched_data_dir, f'data_{job_array[array_id]}_{batch_id}.pkl')
-    with open(data_batch_filepath, 'rb') as f:
-        ids_and_data_batch = pkl.load(f)
+    ids_and_data_batch = load_pickle(data_batch_filepath)
     if len(ids_and_data_batch) == 0:
         result = []
         ids = []
@@ -38,11 +38,10 @@ def main(
     # Save results
     results_batch_filepath = os.path.join(batched_results_dir, f'results_{job_array[array_id]}_{batch_id}.pkl')
     os.makedirs(batched_results_dir, exist_ok=True)
-    with open(results_batch_filepath, 'wb') as f:
-        pkl.dump(list(zip(ids, result)), f)
+    save_pickle(list(zip(ids, result)), results_batch_filepath)
 
 def _run_batch(
-    single_run_fn: Callable[[int, list, str], list],
+    single_run_fn: Callable[[int, list[str], str], list[str]],
     run_ids: int,
     data_batch: list,
     split_results_dir: str

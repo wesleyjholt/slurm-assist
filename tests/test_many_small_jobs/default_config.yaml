@@ -1,12 +1,14 @@
 input_data_file: data.txt
 results_dir: results
 main_slurm_args: 
+  # Refer to pyslurm docs to know what fields are available
+  # https://pyslurm.github.io/23.2/reference/jobsubmitdescription/
   array: 1-10
-  time: 00:20:00
-  mem-per-cpu: 1024M
+  time_limit: 00:20:00
+  memory_per_cpu: 1024M
   ntasks: 3
   account: standby
 merge_slurm_args:
-  time: 00:10:00
-  mem-per-cpu: 1024M
+  time_limit: 00:10:00
+  memory_per_cpu: 1024M
   account: standby

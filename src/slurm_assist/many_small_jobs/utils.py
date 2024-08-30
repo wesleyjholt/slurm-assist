@@ -1,30 +1,29 @@
-import os
-import pickle
 import yaml
-import json
-import subprocess
-from typing import Union, Mapping, Optional
+import csv
+import pickle
+from typing import Union, Mapping
 ListLike = Union[list, tuple, set, range]
+
+def load_csv(file_path):
+    with open(file_path, 'r') as f:
+        return [line for line in csv.reader(f)]
 
 def load_yaml(file_path):
     with open(file_path, 'r') as f:
-        return yaml.safe_load(f)
-
-def load_json(file_path):
-    with open(file_path, 'r') as f:
-        return json.load(f)
+        return yaml.load(f, Loader=yaml.Loader)
     
 def load_pickle(file_path):
     with open(file_path, 'rb') as f:
         return pickle.load(f)
 
+def save_csv(obj, file_path):
+    with open(file_path, 'w') as f:
+        writer = csv.writer(f)
+        writer.writerows(obj)
+
 def save_yaml(obj, file_path):
     with open(file_path, 'w') as f:
         yaml.dump(obj, f)
-
-def save_json(obj, file_path):
-    with open(file_path, 'w') as f:
-        json.dump(obj, f, indent=4)
 
 def save_pickle(obj, file_path):
     with open(file_path, 'wb') as f:
@@ -53,20 +52,42 @@ def parse_slurm_array(slurm_array):
         if ':' in part:
             start, end = map(int, part.split(':'))
             job_list.extend(range(start, end + 1))
+        elif '-' in part:
+            start, end = map(int, part.split('-'))
+            job_list.extend(range(start, end + 1))
         else:
             # Single index
             job_list.append(int(part))
     
     return job_list
 
+# def merge_dicts(*dicts):
+#     if len(dicts)==1:
+#         return dicts[0]
+#     merged = dicts[0]
+#     for d in dicts[1:]:
+#         merged.update(d)
+#     return merged
+
 # Recursive function to merge two dictionaries
-def merge_dicts(dict1, dict2):
-    for key, value in dict2.items():
-        if isinstance(value, Mapping) and key in dict1:
-            dict1[key] = merge_dicts(dict1.get(key, {}), value)
-        else:
-            dict1[key] = value
-    return dict1
+def merge_dicts(*dicts):
+    def _merge(dict1, dict2):
+        for key, value in dict2.items():
+            if isinstance(value, Mapping) and key in dict1:
+                dict1[key] = _merge(dict1.get(key, {}), value)
+            else:
+                dict1[key] = value
+        return dict1
+    
+    # Start with an empty dictionary
+    result = {}
+    
+    # Merge each dictionary into the result
+    for d in dicts:
+        if d is not None:
+            result = _merge(result, d)
+    
+    return result
 
 def get_value_from_nested_dict(nested_dict, key_list):
     value = nested_dict

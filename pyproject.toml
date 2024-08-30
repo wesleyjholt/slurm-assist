@@ -25,8 +25,12 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  "pyyaml"
+  "pyyaml",
+  "pyslurm @ git+https://github.com/PySlurm/pyslurm.git@23.11.x"
 ]
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/slurm_assist"]
@@ -41,9 +45,8 @@ test = [
 ]
 
 [project.urls]
-Documentation = "https://github.com/Wesley Holt/slurm-assist#readme"
-Issues = "https://github.com/Wesley Holt/slurm-assist/issues"
-Source = "https://github.com/Wesley Holt/slurm-assist"
+Documentation = "https://github.com/wesleyjholt/slurm-assist/blob/main/README.md"
+Source = "https://github.com/wesleyjholt/slurm-assist/"
 
 [tool.hatch.version]
 path = "src/slurm_assist/__about__.py"

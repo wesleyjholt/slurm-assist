@@ -8,9 +8,8 @@ DESCRIPTION:
 
 import os
 import subprocess
-import pickle as pkl
-import csv
 from typing import *
+from .utils import load_pickle, save_csv
 
 def main(
     batched_results_dir: str,
@@ -28,8 +27,7 @@ def main(
         j = k % ntasks_per_job
         results_batch_file = os.path.join(batched_results_dir, f'{job_array[i]}_{j}.pkl')
         try:
-            with open(results_batch_file, 'rb') as f:
-                res_ij = pkl.load(f)
+            res_ij = load_pickle(results_batch_file)
             for res_ijl in res_ij:
                 results.append(res_ijl)
             print(f'Loaded {results_batch_file}')
@@ -38,8 +36,7 @@ def main(
             print(f'Failed to load {results_batch_file}')
     
     # Save results to a single file
-    with open(merged_results_file, 'wb') as f:
-        pkl.dump(results, f)
+    save_csv(results, merged_results_file)
 
     # Delete tmp files
     subprocess.run(['rm', '-rf', tmp_dir])
