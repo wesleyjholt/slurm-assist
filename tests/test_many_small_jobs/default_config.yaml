@@ -1,5 +1,7 @@
-input_data_file: data.txt
-results_dir: results
+input_data_file: test_many_small_jobs/data.txt
+results_dir: test_many_small_jobs/results
+container_image: mpi.sif
+mpi: pmi2
 main_slurm_args: 
   # Refer to pyslurm docs to know what fields are available
   # https://pyslurm.github.io/23.2/reference/jobsubmitdescription/

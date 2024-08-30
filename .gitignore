@@ -167,3 +167,5 @@ results*.txt
 checkpoints/
 scratch/
 templates/single-gpu-job/
+*.out
+*.sif

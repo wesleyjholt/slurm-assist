@@ -4,6 +4,10 @@ import pickle
 from typing import Union, Mapping
 ListLike = Union[list, tuple, set, range]
 
+def load_text(file_path):
+    with open(file_path, 'r') as f:
+        return f.read()
+
 def load_csv(file_path):
     with open(file_path, 'r') as f:
         return [line for line in csv.reader(f)]
@@ -15,6 +19,10 @@ def load_yaml(file_path):
 def load_pickle(file_path):
     with open(file_path, 'rb') as f:
         return pickle.load(f)
+
+def save_text(obj, file_path):
+    with open(file_path, 'w') as f:
+        f.write(obj)
 
 def save_csv(obj, file_path):
     with open(file_path, 'w') as f:

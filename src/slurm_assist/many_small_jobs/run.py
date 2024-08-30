@@ -22,6 +22,7 @@ def main(
     Note that array_id is the job array task ID, not the SLURM job ID.
     """
     batch_id = MPI.COMM_WORLD.rank
+    print('here')
 
     # Load data batch
     data_batch_filepath = os.path.join(batched_data_dir, f'data_{job_array[array_id]}_{batch_id}.pkl')

@@ -1,56 +1,147 @@
 import os
 from copy import deepcopy
-from typing import Callable
+import subprocess
+from typing import Callable, Union
 import pyslurm
-from .utils import load_yaml, check_has_keys, merge_dicts, parse_field, parse_slurm_array, estimate_total_time
+from jinja2 import Template
+from . import run, merge
+from .utils import load_yaml, load_text, check_has_keys, merge_dicts, parse_field, parse_slurm_array, estimate_total_time
 from .split_data import main as split_data
+
+parent_dir = os.path.dirname(os.path.abspath(__file__))
+
+main_script_template_content = \
+"""#!/bin/bash
+
+#SBATCH --job-name=main
+
+module purge
+
+# Set up tracking
+module load utilities monitor
+monitor cpu percent >cpu-percent-run.log &
+CPU_PID=$!
+
+# Run computations
+srun --mpi={{ mpi }} apptainer run {{ container_image }} <<EOF
+{{ python_script }}
+EOF
+--job-id $SLURM_ARRAY_TASK_ID {{ python_script_args }}
+
+# Shut down the resource monitors
+kill -s INT $CPU_PID
+"""
+main_script_template = Template(main_script_template_content)
+main_python_script = load_text(run.__file__)
+
+merge_script_template_content = \
+"""#!/bin/bash
+
+#SBATCH --job-name=merge
+
+module purge
+
+# Set up tracking
+module load utilities monitor
+monitor cpu percent >cpu-percent-merge.log &
+CPU_PID=$!
+
+# Run computations
+apptainer run {{ container_image }} <<EOF
+{{ python_script }}
+EOF
+{{ python_script_args }}
+
+# Shut down the resource monitors
+kill -s INT $CPU_PID
+"""
+merge_script_template = Template(merge_script_template_content)
+merge_python_script = load_text(merge.__file__)
 
 class ManySmallJobs(dict):
     def __init__(
         self, 
         single_run_fn: Callable[[int, list[str], str], list[str]], 
-        config_files: list[str]
+        config: Union[str, dict, list[Union[str, dict, None]]]
     ):
-        configs = [load_yaml(f) for f in config_files]
-        config = merge_dicts(*configs)
-        super().__init__(config)
+        if isinstance(config, str):
+            # Single file
+            _config = load_yaml(config)
+        elif isinstance(config, dict):
+            # Single dictionary
+            _config = config
+        else:
+            # List of files, dictionaries, or None values
+            _configs = []
+            for c in config:
+                if isinstance(c, str):
+                    _configs.append(load_yaml(c))
+                elif isinstance(c, dict):
+                    _configs.append(c)
+                elif c is not None:
+                    raise ValueError(f"Invalid config: {c}")
+            if len(_configs) == 0:
+                raise ValueError("No valid configs found.")
+            _config = merge_dicts(*_configs)
+        super().__init__(_config)
         self.single_run_fn = single_run_fn
         self.check_config_is_valid()
 
         # The "main job"
-        main_job_script_args = [
+        main_python_script_args = [
             f"--single-run-fn {self.single_run_fn}",
             f"--batched-data-dir {self.batched_data_dir}",
             f"--batched-results-dir {self.batched_results_dir}",
             f"--split-results-dir {self.split_results_dir}",
             f"--job-array {self.array_elements}"
         ]
-        main_job_script_args = ' '.join([parse_field(arg) for arg in main_job_script_args])
-        self.main_job = pyslurm.JobSubmitDescription(
+        main_python_script_args = ' '.join([parse_field(arg) for arg in main_python_script_args])
+        main_script = main_script_template.render(dict(
+            container_image=self['container_image'],
+            python_script=main_python_script,
+            python_script_args=main_python_script_args,
+            mpi=self['mpi']
+        ))
+        print(main_script)
+        self.main_job_submitter = pyslurm.JobSubmitDescription(
             **self['main_slurm_args'],
-            script='main',
-            script_args=main_job_script_args
+            script=main_script,
+            name='main'
         )
-        self.main_job_id = None
+        self.main_job = None
 
         # The "merge job"
-        merge_job_script_args = [
+        merge_python_script_args = [
             f"--batched-results-dir {self.batched_results_dir}",
             f"--merged-results-file {self.merged_results_file}",
             f"--tmp-dir {self.tmp_dir}",
             f"--job-array {self.array_elements}",
             f"--ntasks-per-job {self['main_slurm_args']['ntasks']}"
         ]
-        merge_job_script_args = ' '.join([parse_field(arg) for arg in merge_job_script_args])
-        self.merge_job = pyslurm.JobSubmitDescription(
+        merge_python_script_args = ' '.join([parse_field(arg) for arg in merge_python_script_args])
+        merge_script = merge_script_template.render(dict(
+            container_image=self['container_image'],
+            python_script=merge_python_script,
+            python_script_args=merge_python_script_args,
+        ))
+        print(merge_script)
+        self.merge_job_submitter = pyslurm.JobSubmitDescription(
             **self['merge_slurm_args'],
-            script='merge',
-            script_args=merge_job_script_args
+            script=merge_script,
+            name='merge'
         )
-        self.merge_job_id = None
+        self.merge_job = None
 
     def check_config_is_valid(self):
-        check_has_keys(self, required_keys=['main_slurm_args', 'merge_slurm_args', 'results_dir', 'input_data_file'])
+        check_has_keys(self, required_keys=['main_slurm_args', 'merge_slurm_args', 'results_dir', 'input_data_file', 'container_image', 'mpi'])
+        if os.path.exists(self['container_image']):
+            res = subprocess.run(['apptainer', 'exec', self['container_image'], 'python3.11', '-c', 'import os'])
+            if res.returncode != 0:
+                raise ValueError(f"Container image '{self['container_image']}' is not valid.")
+        else:
+            raise ValueError(f"Container image '{self['container_image']}' does not exist.")
+        if not os.path.isfile(self['input_data_file']):
+            raise ValueError(f"Input data file '{self['input_data_file']}' is not a file.")
         # check_has_keys(self['main_slurm_args'], required_keys=['array', 'ntasks', 'mem-per-cpu', 'time-limit', 'account'])
         # check_has_keys(self['merge_slurm_args'], required_keys=['mem-per-cpu', 'account'])
         # if 'copy' in self:
@@ -98,16 +189,18 @@ class ManySmallJobs(dict):
         )
 
     def submit_main(self):
-        self.main_job_id = self.main_job.submit()
+        _job_id = self.main_job_submitter.submit()
+        self.main_job = pyslurm.Job(_job_id)
     
-    def submit_merge(self):
-        if self.merge_job_id is not None:
-            self.merge_job.dependencies = f"afterok:{self.main_job_id}"
-        self.merge_job_id = self.merge_job.submit()
+    def submit_merge(self, dependency_id=None):
+        if dependency_id is not None:
+            self.merge_job_submitter.dependencies = f"afterok:{dependency_id}"
+        _job_id = self.merge_job_submitter.submit()
+        self.merge_job = pyslurm.Job(_job_id)
     
     def submit(self):
         self.submit_main()
-        self.submit_merge()
+        self.submit_merge(dependency_id=self.main_job.id)
     
     def estimate_total_time(self, num_runs, single_run_time):
         estimate_total_time(

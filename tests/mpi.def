@@ -1,0 +1,26 @@
+BootStrap: localimage
+From: /apps/base_images/MPI/openmpi/openmpi_4.1.4_pmi2.sif
+
+%post
+    apt-get -y update && \
+    apt-get install -y software-properties-common curl && \
+    add-apt-repository -y ppa:deadsnakes/ppa && \
+    apt-get -y update
+
+    # Install python and pip
+    apt-get install -y python3.11 python3.11-distutils python3.11-dev
+    curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11
+
+    # Install other python packages
+    python3.11 -m pip install --upgrade pip
+    python3.11 -m pip install mpi4py
+
+    # Clean up
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+%runscript
+    exec python3.11 "$@"
+
+%help
+    This container executes python3.11 with mpi4py installed for Purdue RCAC clusters.
