@@ -11,10 +11,10 @@ monitor cpu percent >cpu-percent-merge.log &
 CPU_PID=$!
 
 # Get apptainer image
-container_image=`python3 parse_image_from_args.py $@`
+# container_image=`python3 parse_image_from_args.py $@`
 
 # Run computations
-apptainer run $container_image merge_results.py $@
+apptainer run $1 merge_results.py ${@:2}
 
 # Shut down the resource monitors
 kill -s INT $CPU_PID

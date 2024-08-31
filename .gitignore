@@ -169,3 +169,4 @@ scratch/
 templates/single-gpu-job/
 *.out
 *.sif
+.tmp/

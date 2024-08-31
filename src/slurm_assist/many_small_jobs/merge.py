@@ -9,7 +9,18 @@ DESCRIPTION:
 import os
 import subprocess
 from typing import *
-from .utils import load_pickle, save_csv
+import pickle
+import csv
+# from .utils import load_pickle, save_csv
+
+def load_pickle(file_path):
+    with open(file_path, 'rb') as f:
+        return pickle.load(f)
+
+def save_csv(obj, file_path):
+    with open(file_path, 'w') as f:
+        writer = csv.writer(f)
+        writer.writerows(obj)
 
 def main(
     batched_results_dir: str,

@@ -4,10 +4,38 @@ PURPOSE: Run a batches data through user-defined processing.
 """
 
 import os
-import pickle as pkl
 from typing import Callable
 from mpi4py import MPI
-from .utils import load_pickle, save_pickle
+import pickle
+# from .utils import load_pickle, save_pickle, parse_slurm_array
+
+def load_pickle(file_path):
+    with open(file_path, 'rb') as f:
+        return pickle.load(f)
+
+def save_pickle(obj, file_path):
+    with open(file_path, 'wb') as f:
+        pickle.dump(obj, f)
+
+def parse_slurm_array(slurm_array):
+    job_list = []
+    
+    # Split the array by commas to handle separate ranges/indices
+    parts = slurm_array.split(',')
+    
+    for part in parts:
+        # Check if it's a range (contains ':')
+        if ':' in part:
+            start, end = map(int, part.split(':'))
+            job_list.extend(range(start, end + 1))
+        elif '-' in part:
+            start, end = map(int, part.split('-'))
+            job_list.extend(range(start, end + 1))
+        else:
+            # Single index
+            job_list.append(int(part))
+    
+    return job_list
 
 def main(
     array_id: int, 
@@ -15,14 +43,14 @@ def main(
     batched_data_dir: str,
     batched_results_dir: str,
     split_results_dir: str,
-    job_array: list[int]
+    job_array: str
 ):
     """Main entry point.
 
     Note that array_id is the job array task ID, not the SLURM job ID.
     """
     batch_id = MPI.COMM_WORLD.rank
-    print('here')
+    job_array = parse_slurm_array(job_array)
 
     # Load data batch
     data_batch_filepath = os.path.join(batched_data_dir, f'data_{job_array[array_id]}_{batch_id}.pkl')
@@ -74,9 +102,13 @@ def _run_batch(
 if __name__=='__main__':
     import argparse
     import time
+    import sys
+    import importlib
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--job-id', type=str)
+    parser.add_argument('--single-run-path', type=str)
+    parser.add_argument('--single-run-module', type=str)
     parser.add_argument('--single-run-fn', type=str)
     parser.add_argument('--batched-data-dir', type=str)
     parser.add_argument('--batched-results-dir', type=str)
@@ -85,9 +117,11 @@ if __name__=='__main__':
     args, unknown_args = parser.parse_known_args()
 
     t1 = time.time()
+    sys.path.append(args.single_run_path)
+    single_run_fn = getattr(importlib.import_module(args.single_run_module), args.single_run_fn)
     main(
         job_id=args.job_id, 
-        single_run_fn=args.single_run_fn,
+        single_run_fn=single_run_fn,
         batched_data_dir=args.batched_data_dir,
         batched_results_dir=args.batched_results_dir,
         split_results_dir=args.split_results_dir,

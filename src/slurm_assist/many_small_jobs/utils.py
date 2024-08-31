@@ -1,7 +1,12 @@
+import os
+import sys
 import yaml
 import csv
 import pickle
-from typing import Union, Mapping
+import subprocess
+import tempfile
+from jinja2 import Template
+from typing import Union, Mapping, Optional
 ListLike = Union[list, tuple, set, range]
 
 def load_text(file_path):
@@ -19,6 +24,10 @@ def load_yaml(file_path):
 def load_pickle(file_path):
     with open(file_path, 'rb') as f:
         return pickle.load(f)
+
+def append_text(obj, file_path):
+    with open(file_path, 'a') as f:
+        f.write(obj)
 
 def save_text(obj, file_path):
     with open(file_path, 'w') as f:
@@ -123,6 +132,68 @@ def get_value_from_nested_dict(nested_dict, key_list):
 #     job_id = int(output.stdout.split()[-1])
 
 #     return job_id
+
+submit_command_template_content = \
+"""sbatch \
+{% for key, value in slurm_args.items() if value is not none %}\
+{% if value is boolean and value %}--{{ key }} \
+{% elif value is not boolean %}--{{ key }}={{ value }} \
+{% endif %}{% endfor %} \
+{{ job_script_path }}
+"""
+submit_command_template = Template(submit_command_template_content)
+# submit_command_template = Template('sbatch simple-job-submission-file')
+
+# def submit_slurm_job(slurm_args: dict, job_script: str, verbose: bool = True):
+#     if not os.path.exists('./.tmp'):
+#         os.makedirs('./.tmp')
+#     output = subprocess.run(['mktemp', './.tmp/submit.XXXXXX'], capture_output=True, text=True)
+#     job_script_path = output.stdout
+#     append_text(job_script, job_script_path)
+#     subprocess.run(['\"\"\"', job_script, '\n\"\"\"', '>>', job_script_path], shell=True)
+#     sbatch_command = submit_command_template.render(slurm_args=slurm_args, job_script_path=job_script_path)
+#     output = subprocess.run(sbatch_command, capture_output=True, text=True, shell=True)
+#     print(sbatch_command)
+#     # os.system(sbatch_command)
+#     if verbose:
+#         print(output.stdout)
+#     job_id = int(output.stdout.split()[-1])
+#     return job_id, job_script_path
+
+def submit_slurm_job(slurm_args: dict, job_script: str, verbose: bool = True):
+    if not os.path.exists('./.tmp'):
+        os.makedirs('./.tmp')
+    env = os.environ.copy()
+    # output = subprocess.run(['mktemp', './.tmp/submit.XXXXXX'], capture_output=True, text=True)
+    with tempfile.NamedTemporaryFile(dir='.tmp', delete=False) as temp_file:
+        print("Temporary file created:", temp_file.name)
+        temp_file.write(job_script.encode())
+        tmp_file = temp_file.name
+
+    # job_script_path = output.stdout
+    # append_text(job_script, job_script_path)
+    # with open(job_script_path, 'w') as f:
+    #     f.write(job_script)
+    # save_text(job_script, job_script_path)
+    # print(load_text(job_script_path))
+
+    # subprocess.run(['\"\"\"', job_script, '\n\"\"\"', '>>', job_script_path], shell=True)
+
+    # submit_command_template = 'sbatch {slurm_args} {job_script_path}'
+    sbatch_command = submit_command_template.render(slurm_args=slurm_args, job_script_path=tmp_file)
+    
+    
+    output = subprocess.run(sbatch_command, capture_output=True, text=True, shell=True, env=env)
+    # print(output)
+
+    print(sbatch_command)
+    # os.system(sbatch_command)
+    if output.stderr != '':
+        print(output.stderr)
+    if verbose:
+        print(output.stdout)
+    job_id = int(output.stdout.split()[-1])
+    return job_id, tmp_file
 
 def estimate_total_time(num_runs, single_run_time, job_array_size, n_tasks_per_job, safety_factor=1.0):
     """Estimates the amount of time a job will take.

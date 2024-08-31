@@ -1,0 +1,1 @@
+sbatch -A standby --nodes 1 --mem-per-cpu 1024M --job-name "simple test" 
