@@ -227,9 +227,7 @@ class ManySmallJobs(dict):
 
         estimate_total_time(
             1000000,  # total number of runs
-            180,  # time per run (in seconds)
-            400,  # job array size
-            50  # number of tasks per job
+            180  # time per run (in seconds)
         )
         """
         estimate_total_time(
