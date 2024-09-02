@@ -121,11 +121,6 @@ class ManySmallJobs(dict):
             python_script=merge_python_script,
             python_script_args=merge_python_script_args,
         ))
-        # self.merge_job_submitter = pyslurm.JobSubmitDescription(
-        #     **self['merge_slurm_args'],
-        #     script=merge_script,
-        #     name='merge'
-        # )
         self.merge_job_id = None
 
     def check_config_is_valid(self):
@@ -241,5 +236,5 @@ class ManySmallJobs(dict):
             num_runs=num_runs,
             single_run_time=single_run_time,
             job_array_size=self.array_size,
-            n_tasks_per_job=self.main_job.ntasks
+            n_tasks_per_job=self['main_slurm_args']['ntasks']
         )
