@@ -1,8 +1,11 @@
 import os
+import sys
+import yaml
 import csv
 import pickle
 import subprocess
-
+import tempfile
+from jinja2 import Template
 from typing import Union, Mapping, Optional
 ListLike = Union[list, tuple, set, range]
 
@@ -15,7 +18,6 @@ def load_csv(file_path):
         return [line for line in csv.reader(f)]
 
 def load_yaml(file_path):
-    import yaml
     with open(file_path, 'r') as f:
         return yaml.load(f, Loader=yaml.Loader)
     
@@ -37,7 +39,6 @@ def save_csv(obj, file_path):
         writer.writerows(obj)
 
 def save_yaml(obj, file_path):
-    import yaml
     with open(file_path, 'w') as f:
         yaml.dump(obj, f)
 
@@ -81,12 +82,6 @@ def parse_slurm_array(slurm_array):
             job_list.append(int(part))
     
     return job_list
-
-def to_zero_based_indexing(ind: Union[int, list]):
-    if isinstance(ind, int):
-        return ind - 1
-    else:
-        return list(map(lambda x: x - 1), ind)
 
 # def merge_dicts(*dicts):
 #     if len(dicts)==1:
@@ -143,7 +138,15 @@ def get_value_from_nested_dict(nested_dict, key_list):
 
 #     return job_id
 
-
+submit_command_template_content = \
+"""sbatch \
+{% for key, value in slurm_args.items() if value is not none %}\
+{% if value is boolean and value %}--{{ key }} \
+{% elif value is not boolean %}--{{ key }}={{ value }} \
+{% endif %}{% endfor %} \
+{{ job_script_path }}
+"""
+submit_command_template = Template(submit_command_template_content)
 # submit_command_template = Template('sbatch simple-job-submission-file')
 
 # def submit_slurm_job(slurm_args: dict, job_script: str, verbose: bool = True):
@@ -162,32 +165,15 @@ def get_value_from_nested_dict(nested_dict, key_list):
 #     job_id = int(output.stdout.split()[-1])
 #     return job_id, job_script_path
 
-def cancel_slurm_job(job_id: int, verbose: bool = True):
-    output = subprocess.run(['scancel', str(job_id)], capture_output=True, text=True)
-    if output.stderr != '':
-        print(output.stderr)
-    if verbose:
-        print(output.stdout)
-
-def submit_slurm_job(slurm_args: dict, job_script_filename: str, verbose: bool = True):
-    from jinja2 import Template
-    submit_command_template_content = \
-"""sbatch \
-{% for key, value in slurm_args.items() if value is not none %}\
-{% if value is boolean and value %}--{{ key }} \
-{% elif value is not boolean %}--{{ key }}={{ value }} \
-{% endif %}{% endfor %} \
-{{ job_script_filename }}
-"""
-    submit_command_template = Template(submit_command_template_content)
-    # if not os.path.exists('./.tmp'):
-    #     os.makedirs('./.tmp')
+def submit_slurm_job(slurm_args: dict, job_script: str, verbose: bool = True):
+    if not os.path.exists('./.tmp'):
+        os.makedirs('./.tmp')
     env = os.environ.copy()
-    # # output = subprocess.run(['mktemp', './.tmp/submit.XXXXXX'], capture_output=True, text=True)
-    # with tempfile.NamedTemporaryFile(dir='.tmp', delete=False) as temp_file:
-    #     print("Temporary file created:", temp_file.name)
-    #     temp_file.write(job_script.encode())
-    #     tmp_file = temp_file.name
+    # output = subprocess.run(['mktemp', './.tmp/submit.XXXXXX'], capture_output=True, text=True)
+    with tempfile.NamedTemporaryFile(dir='.tmp', delete=False) as temp_file:
+        print("Temporary file created:", temp_file.name)
+        temp_file.write(job_script.encode())
+        tmp_file = temp_file.name
 
     # job_script_path = output.stdout
     # append_text(job_script, job_script_path)
@@ -199,7 +185,7 @@ def submit_slurm_job(slurm_args: dict, job_script_filename: str, verbose: bool =
     # subprocess.run(['\"\"\"', job_script, '\n\"\"\"', '>>', job_script_path], shell=True)
 
     # submit_command_template = 'sbatch {slurm_args} {job_script_path}'
-    sbatch_command = submit_command_template.render(slurm_args=slurm_args, job_script_filename=job_script_filename)
+    sbatch_command = submit_command_template.render(slurm_args=slurm_args, job_script_path=tmp_file)
     
     
     output = subprocess.run(sbatch_command, capture_output=True, text=True, shell=True, env=env)
@@ -212,7 +198,7 @@ def submit_slurm_job(slurm_args: dict, job_script_filename: str, verbose: bool =
     if verbose:
         print(output.stdout)
     job_id = int(output.stdout.split()[-1])
-    return job_id
+    return job_id, tmp_file
 
 def estimate_total_time(num_runs, single_run_time, job_array_size, n_tasks_per_job, safety_factor=1.0):
     """Estimates the amount of time a job will take.

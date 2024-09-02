@@ -7,14 +7,14 @@ DESCRIPTION:
     created will be:
 
         output_dir/
-            data_batch_0_0.txt
-            data_batch_0_1.txt
-            data_batch_1_0.txt
-            data_batch_1_1.txt
-            data_batch_2_0.txt
-            data_batch_2_1.txt
+            data_batch_0_0.pkl
+            data_batch_0_1.pkl
+            data_batch_1_0.pkl
+            data_batch_1_1.pkl
+            data_batch_2_0.pkl
+            data_batch_2_1.pkl
 
-    where each data_batch_i_j.txt contains 4 data entries. Here, i corresponds to the job array number,
+    where each data_batch_i_j.pkl contains 4 data entries. Here, i corresponds to the job array number,
     and j corresponds to the cpu/process number within a job.
 """
 

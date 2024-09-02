@@ -13,14 +13,34 @@ import pickle
 import csv
 # from .utils import load_pickle, save_csv
 
-# def load_pickle(file_path):
-#     with open(file_path, 'rb') as f:
-#         return pickle.load(f)
+def load_pickle(file_path):
+    with open(file_path, 'rb') as f:
+        return pickle.load(f)
 
-# def save_csv(obj, file_path):
-#     with open(file_path, 'w') as f:
-#         writer = csv.writer(f)
-#         writer.writerows(obj)
+def save_csv(obj, file_path):
+    with open(file_path, 'w') as f:
+        writer = csv.writer(f)
+        writer.writerows(obj)
+
+def parse_slurm_array(slurm_array):
+    job_list = []
+    
+    # Split the array by commas to handle separate ranges/indices
+    parts = slurm_array.split(',')
+    
+    for part in parts:
+        # Check if it's a range (contains ':')
+        if ':' in part:
+            start, end = map(int, part.split(':'))
+            job_list.extend(range(start, end + 1))
+        elif '-' in part:
+            start, end = map(int, part.split('-'))
+            job_list.extend(range(start, end + 1))
+        else:
+            # Single index
+            job_list.append(int(part))
+    
+    return job_list
 
 def main(
     batched_results_dir: str,
@@ -30,15 +50,13 @@ def main(
     ntasks_per_job: int
 ):
     """Collect/merge the results."""
-    job_array_ = parse_slurm_array(job_array)
-
     # Collect results for each batch of computation and append to a single list.
-    num_jobs = len(job_array_)
+    num_jobs = len(job_array)
     results = []
     for k in range(num_jobs*ntasks_per_job):
         i = k // ntasks_per_job
         j = k % ntasks_per_job
-        results_batch_file = os.path.join(batched_results_dir, f'results_{job_array_[i]}_{j}.pkl')
+        results_batch_file = os.path.join(batched_results_dir, f'{job_array[i]}_{j}.pkl')
         try:
             res_ij = load_pickle(results_batch_file)
             for res_ijl in res_ij:
@@ -58,10 +76,8 @@ def main(
 if __name__=='__main__':
     import argparse
     import time
-    import sys
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--parent-dir', type=str)
     parser.add_argument('--batched-results-dir', type=str)
     parser.add_argument('--merged-results-file', type=str)
     parser.add_argument('--tmp-dir', type=str)
@@ -71,11 +87,6 @@ if __name__=='__main__':
 
     print('\nMerging results...')
     t1 = time.time()
-    sys.path.append(args.parent_dir)
-    try:
-        from utils import load_pickle, save_csv, parse_slurm_array, to_zero_based_indexing
-    except:
-        raise Exception('Could not import utils module. Make sure the --parent-dir argument is pointing to the package\'s many_small_jobs_directory.')
     main(
         batched_results_dir=args.batched_results_dir,
         merged_results_file=args.merged_results_file,

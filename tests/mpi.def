@@ -13,7 +13,7 @@ From: /apps/base_images/MPI/openmpi/openmpi_4.1.4_pmi2.sif
 
     # Install other python packages
     python3.11 -m pip install --upgrade pip
-    python3.11 -m pip install mpi4py numpy
+    python3.11 -m pip install mpi4py numpy pyyaml
 
     # Clean up
     apt-get clean && \

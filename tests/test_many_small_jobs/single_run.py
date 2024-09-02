@@ -9,7 +9,7 @@ def single_run(
     data: list[str],
     results_dir: str
 ) -> list[str]:
-    message = f"Hello, world! I am from run id {id}, my data is {data}."
+    message = f"Hello, world! I am from run id {id}, my data is {data}.\n"
     results_file = os.path.join(results_dir, f'results_{id}.txt')
     save_txt(message, results_file)
     return data

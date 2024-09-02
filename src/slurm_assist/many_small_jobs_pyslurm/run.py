@@ -6,6 +6,36 @@ PURPOSE: Run a batches data through user-defined processing.
 import os
 from typing import Callable
 from mpi4py import MPI
+import pickle
+# from .utils import load_pickle, save_pickle, parse_slurm_array
+
+def load_pickle(file_path):
+    with open(file_path, 'rb') as f:
+        return pickle.load(f)
+
+def save_pickle(obj, file_path):
+    with open(file_path, 'wb') as f:
+        pickle.dump(obj, f)
+
+def parse_slurm_array(slurm_array):
+    job_list = []
+    
+    # Split the array by commas to handle separate ranges/indices
+    parts = slurm_array.split(',')
+    
+    for part in parts:
+        # Check if it's a range (contains ':')
+        if ':' in part:
+            start, end = map(int, part.split(':'))
+            job_list.extend(range(start, end + 1))
+        elif '-' in part:
+            start, end = map(int, part.split('-'))
+            job_list.extend(range(start, end + 1))
+        else:
+            # Single index
+            job_list.append(int(part))
+    
+    return job_list
 
 def main(
     array_id: int, 
@@ -20,11 +50,10 @@ def main(
     Note that array_id is the job array task ID, not the SLURM job ID.
     """
     batch_id = MPI.COMM_WORLD.rank
-    job_array_ = parse_slurm_array(job_array)
-    array_id_ = to_zero_based_indexing(array_id)
+    job_array = parse_slurm_array(job_array)
 
     # Load data batch
-    data_batch_filepath = os.path.join(batched_data_dir, f'data_{job_array_[array_id_]}_{batch_id}.pkl')
+    data_batch_filepath = os.path.join(batched_data_dir, f'data_{job_array[array_id]}_{batch_id}.pkl')
     ids_and_data_batch = load_pickle(data_batch_filepath)
     if len(ids_and_data_batch) == 0:
         result = []
@@ -36,7 +65,8 @@ def main(
         result = _run_batch(single_run_fn, ids, data_batch, split_results_dir)
     
     # Save results
-    results_batch_filepath = os.path.join(batched_results_dir, f'results_{job_array_[array_id_]}_{batch_id}.pkl')
+    results_batch_filepath = os.path.join(batched_results_dir, f'results_{job_array[array_id]}_{batch_id}.pkl')
+    os.makedirs(batched_results_dir, exist_ok=True)
     save_pickle(list(zip(ids, result)), results_batch_filepath)
 
 def _run_batch(
@@ -76,9 +106,8 @@ if __name__=='__main__':
     import importlib
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--array-id', type=int)
-    parser.add_argument('--parent-dir', type=str)
-    parser.add_argument('--single-run-module-parent-dir', type=str)
+    parser.add_argument('--job-id', type=str)
+    parser.add_argument('--single-run-path', type=str)
     parser.add_argument('--single-run-module', type=str)
     parser.add_argument('--single-run-fn', type=str)
     parser.add_argument('--batched-data-dir', type=str)
@@ -88,15 +117,10 @@ if __name__=='__main__':
     args, unknown_args = parser.parse_known_args()
 
     t1 = time.time()
-    sys.path.append(args.parent_dir)
-    try:
-        from utils import load_pickle, save_pickle, parse_slurm_array, to_zero_based_indexing
-    except:
-        raise Exception('Could not import utils module. Make sure the --parent-dir argument is pointing to the package\'s many_small_jobs_directory.')
-    sys.path.append(args.single_run_module_parent_dir)
+    sys.path.append(args.single_run_path)
     single_run_fn = getattr(importlib.import_module(args.single_run_module), args.single_run_fn)
     main(
-        array_id=args.array_id, 
+        job_id=args.job_id, 
         single_run_fn=single_run_fn,
         batched_data_dir=args.batched_data_dir,
         batched_results_dir=args.batched_results_dir,
