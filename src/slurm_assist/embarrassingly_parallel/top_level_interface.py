@@ -26,7 +26,7 @@ merge_python_script = os.path.abspath(merge.__file__)
 main_script_template_content = \
 """#!/bin/bash -l
 
-#SBATCH --output={{ stdout_dir }}/slurm-%j.out
+#SBATCH --output={{ stdout_dir }}/slurm-%A_%a.out
 
 module purge
 
@@ -160,7 +160,7 @@ class EmbarrassinglyParallelJobs(JobGroup):
     @property
     def tmp_dir(self):
         if 'tmp_dir' in self.keys():
-            return self['tmp_dir']
+            return os.path.relpath(self['tmp_dir'])
         else:
             return os.path.join(self['results_dir'], 'tmp')
     
@@ -179,7 +179,7 @@ class EmbarrassinglyParallelJobs(JobGroup):
     @property
     def log_dir(self):
         if 'log_dir' in self.keys():
-            return self['log_dir']
+            return os.path.relpath(self['log_dir'])
         else:
             return 'logs'
     
@@ -255,16 +255,9 @@ class EmbarrassinglyParallelJobs(JobGroup):
         self.submit_main(dependency_ids=dependency_ids, dependency_conditions=dependency_conditions)
 
         if verbose:
-            result = subprocess.run(
-                f"scontrol show job {self.main_job_id} | grep -oP 'StdOut=\\K\\S+'",
-                capture_output=True,
-                text=True,
-                shell=True
-            )
-            stdout_file = result.stdout.strip()
             print(f"Diagnostics")
             print(f"-----------")
-            print(f"Standard output/error:          {stdout_file}")
+            print(f"Standard output/error files:    {os.path.abspath(self.stdout_dir)}/slurm-{self.main_job_id}_*.out")
             print(f"Resource monitoring directory:  {os.path.abspath(self.resource_monitoring_dir)}")
             print()
 
@@ -276,16 +269,9 @@ class EmbarrassinglyParallelJobs(JobGroup):
         self.submit_merge()
 
         if verbose:
-            result = subprocess.run(
-                f"scontrol show job {self.merge_job_id} | grep -oP 'StdOut=\\K\\S+'",
-                capture_output=True,
-                text=True,
-                shell=True
-            )
-            stdout_file = result.stdout.strip()
             print(f"Diagnostics")
             print(f"-----------")
-            print(f"Standard output/error:          {stdout_file}")
+            print(f"Standard output/error files:    {os.path.abspath(self.stdout_dir)}/slurm-{self.merge_job_id}.out")
             print(f"Resource monitoring directory:  {os.path.abspath(self.resource_monitoring_dir)}")
             print()
 

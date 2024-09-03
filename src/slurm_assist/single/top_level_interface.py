@@ -8,7 +8,11 @@ from ..utils import check_has_keys, remove_and_make_dir, submit_slurm_job, cance
 script_template_content = \
 """#!/bin/bash -l
 
+{% if is_array_job %}
+#SBATCH --output={{ stdout_dir }}/slurm-%A_%a.out
+{% else %}
 #SBATCH --output={{ stdout_dir }}/slurm-%j.out
+{% endif %}
 
 module purge
 
@@ -27,9 +31,6 @@ GPU_USAGE_PID=$!
 monitor gpu memory > {{ resource_monitoring_dir }}/gpu-memory-run-$SLURM_JOB_ID{% if is_array_job %}_$SLURM_ARRAY_TASK_ID{% endif %}.log &
 GPU_MEM_PID=$!
 {% endif %}
-
-# Print the resource monitor directory
-echo "Resource monitoring logs for this job are in {{ resource_monitoring_dir }}"
 
 # Run computations
 apptainer run {{ container_image }} {{ program }} \
@@ -59,7 +60,8 @@ class SingleJob(JobGroup):
             program=self['program'],
             program_args=self['program_args'],
             stdout_dir=self.stdout_dir,
-            resource_monitoring_dir=self.resource_monitoring_dir
+            resource_monitoring_dir=self.resource_monitoring_dir,
+            is_array_job = 'array' in self['slurm_args'].keys()
         ))
         self.job_id = None
     
@@ -69,7 +71,7 @@ class SingleJob(JobGroup):
     @property
     def tmp_dir(self):
         if 'tmp_dir' in self.keys():
-            return self['tmp_dir']
+            return os.path.relpath(self['tmp_dir'])
         else:
             return os.path.join(self['results_dir'], 'tmp')
     
@@ -80,7 +82,7 @@ class SingleJob(JobGroup):
     @property
     def log_dir(self):
         if 'log_dir' in self.keys():
-            return self['log_dir']
+            return os.path.relpath(self['log_dir'])
         else:
             return 'logs'
     
@@ -114,16 +116,12 @@ class SingleJob(JobGroup):
         self.job_id = submit_slurm_job(slurm_args=self['slurm_args'], job_script_filename=job_script_filename)
 
         if verbose:
-            result = subprocess.run(
-                f"scontrol show job {self.job_id} | grep -oP 'StdOut=\\K\\S+'",
-                capture_output=True,
-                text=True,
-                shell=True
-            )
-            stdout_file = result.stdout.strip()
             print(f"Diagnostics")
             print(f"-----------")
-            print(f"Standard output/error:          {stdout_file}")
+            if 'array' in self['slurm_args'].keys():
+                print(f"Standard output/error files:    {os.path.abspath(self.stdout_dir)}/slurm-{self.job_id}_*.out")
+            else:
+                print(f"Standard output/error files:    {os.path.abspath(self.stdout_dir)}/slurm-{self.job_id}.out")
             print(f"Resource monitoring directory:  {os.path.abspath(self.resource_monitoring_dir)}")
             print()
 

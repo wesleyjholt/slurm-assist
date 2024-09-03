@@ -12,3 +12,4 @@ slurm_args:  # Required
   nodes: 1
   ntasks: 1
   mem-per-cpu: "1024M"
+  array: 1-3
