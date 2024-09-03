@@ -28,12 +28,27 @@ pip install git+https://github.com/wesleyjholt/slurm-assist
 ## Examples
 
 ### Single job
+
+Here is the main data-processing script:
+```python
+# Filename: program.py
+
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('--foo', type=str)
+parser.add_argument('--bar', type=float)
+args = parser.parse_args()
+
+print(args.foo)
+print(args.bar)
+```
+
+Now let's create and submit a job where we run `program.py`:
 ```python
 # First, create the necessary configurations
 config = {
-    'input_data_file': test_single/data.txt,
-    'results_dir': test_single/results,
-    'program': ./test_single/program.py,
+    'results_dir': results,
+    'program': ./program.py,
     'program_args': {
         'foo': "I_am_the_argument_foo",
         'bar': 100.0
@@ -41,7 +56,7 @@ config = {
     'container_image': mpi.sif,  # This is an apptainer image
     'slurm_args': {
         # These arguments are passed to the sbatch call
-        'job-name': test_single,
+        'job-name': single_job,
         'time': "00:05:00",
         'nodes': 1,
         'ntasks': 1,
