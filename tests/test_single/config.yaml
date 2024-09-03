@@ -5,7 +5,6 @@ program_args:  # Required
   foo: "I_am_the_argument_foo"
   bar: 100.0
 container_image: mpi.sif  # Required
-mpi: pmi2  # Required
 slurm_args:  # Required
   job-name: test_single
   time: "00:05:00"

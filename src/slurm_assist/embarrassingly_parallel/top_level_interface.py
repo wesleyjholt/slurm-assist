@@ -2,7 +2,6 @@ import os
 import subprocess
 from typing import Union, Optional
 from collections import namedtuple
-import tempfile
 from jinja2 import Template
 from . import run, merge
 from ..job import JobGroup

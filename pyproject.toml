@@ -38,6 +38,9 @@ packages = ["src/slurm_assist"]
 # mycommand = "slurm_assist.main:main"
 
 [project.optional-dependencies]
+mpi = [
+  "mpi4py"
+]
 test = [
   "pandas",
   "mpi4py"
