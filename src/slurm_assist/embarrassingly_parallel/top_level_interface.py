@@ -26,21 +26,23 @@ merge_python_script = os.path.abspath(merge.__file__)
 main_script_template_content = \
 """#!/bin/bash -l
 
+#SBATCH --output={{ stdout_dir }}/slurm-%j.out
+
 module purge
 
 # Set up CPU monitoring
 module load utilities monitor
-monitor cpu percent > cpu-percent-run-${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}.log &
+monitor cpu percent > {{ resource_monitoring_dir }}/cpu-percent-run-${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}.log &
 CPU_USAGE_PID=$!
-monitor cpu memory > cpu-memory-run-${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}.log &
+monitor cpu memory > {{ resource_monitoring_dir }}/cpu-memory-run-${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}.log &
 CPU_MEM_PID=$!
 
 # Set up GPU monitoring if requested
 {% if use_gpu %}
 module load utilities monitor
-monitor gpu percent > gpu-percent-run-${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}.log &
+monitor gpu percent > {{ resource_monitoring_dir }}/gpu-percent-run-${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}.log &
 GPU_USAGE_PID=$!
-monitor gpu memory > gpu-memory-run-${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}.log &
+monitor gpu memory > {{ resource_monitoring_dir }}/gpu-memory-run-${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}.log &
 GPU_MEM_PID=$!
 {% endif %}
 
@@ -58,13 +60,15 @@ main_script_template = Template(main_script_template_content)
 merge_script_template_content = \
 """#!/bin/bash -l
 
+#SBATCH --output={{ stdout_dir }}/slurm-%j.out
+
 module purge
 
 # Set up CPU monitoring
 module load utilities monitor
-monitor cpu percent > cpu-percent-run-${SLURM_JOB_ID}.log &
+monitor cpu percent > {{ resource_monitoring_dir }}/cpu-percent-run-${SLURM_JOB_ID}.log &
 CPU_USAGE_PID=$!
-monitor cpu memory > cpu-memory-run-${SLURM_JOB_ID}.log &
+monitor cpu memory > {{ resource_monitoring_dir }}/cpu-memory-run-${SLURM_JOB_ID}.log &
 CPU_MEM_PID=$!
 
 # Run computations
@@ -101,7 +105,9 @@ class EmbarrassinglyParallelJobs(JobGroup):
             python_script=main_python_script,
             python_script_args=main_python_script_args,
             mpi=self['mpi'],
-            use_gpu=self['use_gpu']
+            use_gpu=self['use_gpu'],
+            stdout_dir=self.stdout_dir,
+            resource_monitoring_dir=self.resource_monitoring_dir
         ))
         self.main_job_id = None
 
@@ -119,6 +125,8 @@ class EmbarrassinglyParallelJobs(JobGroup):
             container_image=self['container_image'],
             python_script=merge_python_script,
             python_script_args=merge_python_script_args,
+            stdout_dir=self.stdout_dir,
+            resource_monitoring_dir=self.resource_monitoring_dir
         ))
         self.merge_job_id = None
 
@@ -169,6 +177,21 @@ class EmbarrassinglyParallelJobs(JobGroup):
         return os.path.join(self.tmp_dir, 'results_batched')
     
     @property
+    def log_dir(self):
+        if 'log_dir' in self.keys():
+            return self['log_dir']
+        else:
+            return 'logs'
+    
+    @property
+    def resource_monitoring_dir(self):
+        return os.path.join(self.log_dir, 'resource_monitoring')
+    
+    @property
+    def stdout_dir(self):
+        return os.path.join(self.log_dir, 'stdout')
+    
+    @property
     def split_results_dir(self):
         return os.path.join(self['results_dir'], 'split_results')
     
@@ -187,6 +210,8 @@ class EmbarrassinglyParallelJobs(JobGroup):
         os.makedirs(self.batched_data_dir, exist_ok=True)
         os.makedirs(self.batched_results_dir, exist_ok=True)
         os.makedirs(self.split_results_dir, exist_ok=True)
+        os.makedirs(self.resource_monitoring_dir, exist_ok=True)
+        os.makedirs(self.stdout_dir, exist_ok=True)
         
         # Split data
         split_data(
@@ -218,11 +243,52 @@ class EmbarrassinglyParallelJobs(JobGroup):
     def submit(
         self, 
         dependency_ids: Optional[list[list[int]]] = None, 
-        dependency_conditions: Optional[list[str]] = None
+        dependency_conditions: Optional[list[str]] = None,
+        verbose: Optional[bool] = True
     ) -> tuple[int]:
         """Submits the jobs. Returns ID of the last job(s) in the dependency chain."""
+        if verbose:
+            print()
+            print('MAIN JOB')
+            print('========')
+
         self.submit_main(dependency_ids=dependency_ids, dependency_conditions=dependency_conditions)
+
+        if verbose:
+            result = subprocess.run(
+                f"scontrol show job {self.main_job_id} | grep -oP 'StdOut=\\K\\S+'",
+                capture_output=True,
+                text=True,
+                shell=True
+            )
+            stdout_file = result.stdout.strip()
+            print(f"Diagnostics")
+            print(f"-----------")
+            print(f"Standard output/error:          {stdout_file}")
+            print(f"Resource monitoring directory:  {os.path.abspath(self.resource_monitoring_dir)}")
+            print()
+
+        if verbose:
+            print()
+            print('MERGE JOB')
+            print('=========')
+
         self.submit_merge()
+
+        if verbose:
+            result = subprocess.run(
+                f"scontrol show job {self.merge_job_id} | grep -oP 'StdOut=\\K\\S+'",
+                capture_output=True,
+                text=True,
+                shell=True
+            )
+            stdout_file = result.stdout.strip()
+            print(f"Diagnostics")
+            print(f"-----------")
+            print(f"Standard output/error:          {stdout_file}")
+            print(f"Resource monitoring directory:  {os.path.abspath(self.resource_monitoring_dir)}")
+            print()
+
         JobIds = namedtuple('JobIds', ['main', 'merge'])
         return JobIds(main=self.main_job_id, merge=self.merge_job_id)
     

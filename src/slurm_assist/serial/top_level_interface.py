@@ -3,7 +3,6 @@
 
 from typing import Union, Callable, Optional, Sequence, Any
 from ..job import JobGroup
-from ..utils import check_has_keys
 
 Config = Union[str, dict, list[Union[str, dict, None]]]
 

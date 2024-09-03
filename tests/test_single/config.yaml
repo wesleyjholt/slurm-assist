@@ -1,8 +1,8 @@
-input_data_file: test_many_small_jobs/data.txt  # Required
-results_dir: test_many_small_jobs/results  # Required
+input_data_file: test_single/data.txt  # Required
+results_dir: test_single/results  # Required
 program: ./test_single/program.py  # Required
 program_args:  # Required
-  foo: 'I am the argument foo'
+  foo: "I_am_the_argument_foo"
   bar: 100.0
 container_image: mpi.sif  # Required
 mpi: pmi2  # Required

@@ -161,7 +161,13 @@ def submit_slurm_job(
     if output.stderr != '':
         print(output.stderr)
     if verbose:
+        print()
+        print('Submit command')
+        print('--------------')
         print(sbatch_command)
+        print()
+        print('Confirmation')
+        print('------------')
         print(output.stdout)
     job_id = int(output.stdout.split()[-1])
     return job_id
