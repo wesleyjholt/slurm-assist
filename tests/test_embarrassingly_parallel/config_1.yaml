@@ -1,12 +1,10 @@
-input_data_file: test_many_small_jobs/data.txt
-single_run_module_parent_dir: ./test_many_small_jobs
+input_data_file: test_embarrassingly_parallel/data.txt
+single_run_module_parent_dir: ./test_embarrassingly_parallel
 single_run_module: single_run
 single_run_fn: single_run
 container_image: mpi.sif
 mpi: pmi2
 main_slurm_args: 
-  # Refer to pyslurm docs to know what fields are available
-  # https://pyslurm.github.io/23.2/reference/jobsubmitdescription/
   array: 1-4
   time: 00:20:00
   mem-per-cpu: 1024M

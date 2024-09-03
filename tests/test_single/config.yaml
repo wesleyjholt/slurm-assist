@@ -1,0 +1,14 @@
+input_data_file: test_many_small_jobs/data.txt  # Required
+results_dir: test_many_small_jobs/results  # Required
+program: ./test_single/program.py  # Required
+program_args:  # Required
+  foo: 'I am the argument foo'
+  bar: 100.0
+container_image: mpi.sif  # Required
+mpi: pmi2  # Required
+slurm_args:  # Required
+  job-name: test_single
+  time: "00:05:00"
+  nodes: 1
+  ntasks: 1
+  mem-per-cpu: "1024M"

@@ -1,0 +1,2 @@
+results_dir: test_embarrassingly_parallel/results
+tmp_dir: test_embarrassingly_parallel/tmp

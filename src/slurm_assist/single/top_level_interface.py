@@ -20,7 +20,11 @@ monitor gpu percent > gpu-percent-run-$SLURM_JOB_ID.log &
 GPU_PID=$!
 
 # Run computations
-apptainer run {{ container_image }} {{ program }} {{ program_args }}
+apptainer run {{ container_image }} {{ program }} \
+{% for key, value in program_args.items() if value is not none %}\
+{% if value is boolean and value %}--{{ key }} \
+{% elif value is not boolean %}--{{ key }}={{ value }} \
+{% endif %}{% endfor %}
 
 # Shut down the resource monitors
 kill -s INT $CPU_PID $MEM_PID $GPU_PID
