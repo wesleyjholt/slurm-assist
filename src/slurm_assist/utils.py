@@ -2,6 +2,7 @@ import os
 import csv
 import pickle
 import subprocess
+import tempfile
 
 from typing import Union, Mapping, Optional
 ListLike = Union[list, tuple, set, range]
@@ -44,6 +45,15 @@ def save_yaml(obj, file_path):
 def save_pickle(obj, file_path):
     with open(file_path, 'wb') as f:
         pickle.dump(obj, f)
+
+def write_temp_file(
+    obj: str, 
+    dir: Optional[str] = None, 
+    prefix: Optional[str] = None
+):
+    with tempfile.NamedTemporaryFile(mode='w', dir=dir, delete=False, prefix=prefix) as f:
+        f.write(obj)
+    return f.name
 
 def remove_and_make_dir(dir):
     if os.path.exists(dir):
@@ -88,14 +98,6 @@ def to_zero_based_indexing(ind: Union[int, list]):
     else:
         return list(map(lambda x: x - 1), ind)
 
-# def merge_dicts(*dicts):
-#     if len(dicts)==1:
-#         return dicts[0]
-#     merged = dicts[0]
-#     for d in dicts[1:]:
-#         merged.update(d)
-#     return merged
-
 # Recursive function to merge two dictionaries
 def merge_dicts(*dicts):
     def _merge(dict1, dict2):
@@ -122,46 +124,6 @@ def get_value_from_nested_dict(nested_dict, key_list):
         value = value[key]
     return value
 
-# def submit_slurm_job(job_script: str, slurm_args: dict, job_script_args: Optional[list] = None, verbose=True) -> int:
-#     """Submit a SLURM job using sbatch."""
-#     # Convert args to a string
-#     slurm_args = ' '.join([f'--{k} {parse_field(v)}' for k, v in slurm_args.items()])
-#     if job_script_args is not None:
-#         job_script_args = ' '.join([parse_field(arg) for arg in job_script_args])
-#     else:
-#         job_script_args = ''
-    
-#     # Submit the job
-#     output = subprocess.run(["sbatch", slurm_args, job_script, job_script_args], capture_output=True, text=True)
-
-#     if verbose:
-#         print(output.args, '\n\n')
-#         print(output.stdout, end='\n\n\n')
-
-#     # Get the job ID
-#     job_id = int(output.stdout.split()[-1])
-
-#     return job_id
-
-
-# submit_command_template = Template('sbatch simple-job-submission-file')
-
-# def submit_slurm_job(slurm_args: dict, job_script: str, verbose: bool = True):
-#     if not os.path.exists('./.tmp'):
-#         os.makedirs('./.tmp')
-#     output = subprocess.run(['mktemp', './.tmp/submit.XXXXXX'], capture_output=True, text=True)
-#     job_script_path = output.stdout
-#     append_text(job_script, job_script_path)
-#     subprocess.run(['\"\"\"', job_script, '\n\"\"\"', '>>', job_script_path], shell=True)
-#     sbatch_command = submit_command_template.render(slurm_args=slurm_args, job_script_path=job_script_path)
-#     output = subprocess.run(sbatch_command, capture_output=True, text=True, shell=True)
-#     print(sbatch_command)
-#     # os.system(sbatch_command)
-#     if verbose:
-#         print(output.stdout)
-#     job_id = int(output.stdout.split()[-1])
-#     return job_id, job_script_path
-
 def cancel_slurm_job(job_id: int, verbose: bool = True):
     output = subprocess.run(['scancel', str(job_id)], capture_output=True, text=True)
     if output.stderr != '':
@@ -169,7 +131,13 @@ def cancel_slurm_job(job_id: int, verbose: bool = True):
     if verbose:
         print(output.stdout)
 
-def submit_slurm_job(slurm_args: dict, job_script_filename: str, verbose: bool = True):
+def submit_slurm_job(
+    slurm_args: dict, 
+    job_script_filename: str, 
+    verbose: bool = Optional[True],
+    dependency_ids: Optional[list[list[int]]] = None, 
+    dependency_conditions: Optional[list[str]] = None
+):
     from jinja2 import Template
     submit_command_template_content = \
 """sbatch \
@@ -180,39 +148,40 @@ def submit_slurm_job(slurm_args: dict, job_script_filename: str, verbose: bool =
 {{ job_script_filename }}
 """
     submit_command_template = Template(submit_command_template_content)
-    # if not os.path.exists('./.tmp'):
-    #     os.makedirs('./.tmp')
+
+    if (dependency_ids is not None) and (dependency_conditions is not None):
+        dependencies_str = format_dependencies_to_str(dependency_ids, dependency_conditions)
+        slurm_args = dict(**slurm_args, dependency=dependencies_str)
+    elif (dependency_ids is None) ^ (dependency_conditions is None):
+        raise RuntimeError(f'Cannot specify only one of dependency_ids ({dependency_ids}) and dependency_conditions ({dependency_conditions}).')
+
     env = os.environ.copy()
-    # # output = subprocess.run(['mktemp', './.tmp/submit.XXXXXX'], capture_output=True, text=True)
-    # with tempfile.NamedTemporaryFile(dir='.tmp', delete=False) as temp_file:
-    #     print("Temporary file created:", temp_file.name)
-    #     temp_file.write(job_script.encode())
-    #     tmp_file = temp_file.name
-
-    # job_script_path = output.stdout
-    # append_text(job_script, job_script_path)
-    # with open(job_script_path, 'w') as f:
-    #     f.write(job_script)
-    # save_text(job_script, job_script_path)
-    # print(load_text(job_script_path))
-
-    # subprocess.run(['\"\"\"', job_script, '\n\"\"\"', '>>', job_script_path], shell=True)
-
-    # submit_command_template = 'sbatch {slurm_args} {job_script_path}'
     sbatch_command = submit_command_template.render(slurm_args=slurm_args, job_script_filename=job_script_filename)
-    
-    
     output = subprocess.run(sbatch_command, capture_output=True, text=True, shell=True, env=env)
-    # print(output)
-
-    print(sbatch_command)
-    # os.system(sbatch_command)
     if output.stderr != '':
         print(output.stderr)
     if verbose:
+        print(sbatch_command)
         print(output.stdout)
     job_id = int(output.stdout.split()[-1])
     return job_id
+
+def format_dependencies_to_str(ids: list[list[int]], conditions: list[str]) -> str:
+    # Check if the lengths of the ids and conditions match
+    if len(ids) != len(conditions):
+        raise ValueError("The length of 'ids' and 'conditions' must be the same.")
+
+    # Initialize an empty list to hold the parsed dependencies
+    dependencies = []
+
+    # Iterate over the conditions and corresponding job ID lists
+    for job_ids, condition in zip(ids, conditions):
+        # Create a dependency string for each set of job IDs
+        dependency = f"{condition}:" + ":".join(map(str, job_ids))
+        dependencies.append(dependency)
+
+    # Join all dependency strings into a single string with commas
+    return ",".join(dependencies)
 
 def estimate_total_time(num_runs, single_run_time, job_array_size, n_tasks_per_job, safety_factor=1.0):
     """Estimates the amount of time a job will take.

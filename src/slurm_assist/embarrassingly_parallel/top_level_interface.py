@@ -1,24 +1,25 @@
 import os
-from copy import deepcopy
 import subprocess
-from typing import Union
+from typing import Union, Optional
+from collections import namedtuple
 import tempfile
 from jinja2 import Template
 from . import run, merge
-from .utils import (
-    load_yaml, 
+from ..job import JobGroup
+from ..utils import (
     check_has_keys, 
-    merge_dicts, 
     parse_field,
     parse_slurm_array, 
     estimate_total_time, 
     submit_slurm_job, 
     remove_and_make_dir, 
-    cancel_slurm_job
+    cancel_slurm_job,
+    write_temp_file
 )
 from .split_data import main as split_data
 
-parent_dir = os.path.dirname(os.path.abspath(run.__file__))
+from .. import utils
+utils_parent_dir = os.path.dirname(os.path.abspath(utils.__file__))
 main_python_script = os.path.abspath(run.__file__)
 merge_python_script = os.path.abspath(merge.__file__)
 
@@ -27,16 +28,30 @@ main_script_template_content = \
 
 module purge
 
-# Set up tracking
+# Set up CPU monitoring
 module load utilities monitor
-monitor cpu percent >cpu-percent-run.log &
-CPU_PID=$!
+monitor cpu percent > cpu-percent-run-${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}.log &
+CPU_USAGE_PID=$!
+monitor cpu memory > cpu-memory-run-${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}.log &
+CPU_MEM_PID=$!
+
+# Set up GPU monitoring if requested
+{% if use_gpu %}
+module load utilities monitor
+monitor gpu percent > gpu-percent-run-${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}.log &
+GPU_USAGE_PID=$!
+monitor gpu memory > gpu-memory-run-${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}.log &
+GPU_MEM_PID=$!
+{% endif %}
 
 # Run computations
 srun --mpi={{ mpi }} apptainer run {{ container_image }} {{ python_script }} --array-id $SLURM_ARRAY_TASK_ID {{ python_script_args }}
 
 # Shut down the resource monitors
-kill -s INT $CPU_PID
+kill -s INT $CPU_USAGE_PID $CPU_MEM_PID
+{% if use_gpu %}
+kill -s INT $GPU_USAGE_PID $GPU_MEM_PID
+{% endif %}
 """
 main_script_template = Template(main_script_template_content)
 
@@ -45,44 +60,27 @@ merge_script_template_content = \
 
 module purge
 
-# Set up tracking
+# Set up CPU monitoring
 module load utilities monitor
-monitor cpu percent >cpu-percent-merge.log &
-CPU_PID=$!
+monitor cpu percent > cpu-percent-run-${SLURM_JOB_ID}.log &
+CPU_USAGE_PID=$!
+monitor cpu memory > cpu-memory-run-${SLURM_JOB_ID}.log &
+CPU_MEM_PID=$!
 
 # Run computations
 apptainer run {{ container_image }} {{ python_script }} {{ python_script_args }}
 
 # Shut down the resource monitors
-kill -s INT $CPU_PID
+kill -s INT $CPU_USAGE_PID $CPU_MEM_PID
 """
 merge_script_template = Template(merge_script_template_content)
 
-class ManySmallJobs(dict):
+class EmbarrassinglyParallelJobs(JobGroup):
     def __init__(
         self, 
-        *config: Union[str, dict, list[Union[str, dict, None]]]
+        config: Union[str, dict, list[Union[str, dict, None]]]
     ):
-        if isinstance(config, str):
-            # Single file
-            _config = load_yaml(config)
-        elif isinstance(config, dict):
-            # Single dictionary
-            _config = config
-        else:
-            # List of files, dictionaries, or None values
-            _configs = []
-            for c in config:
-                if isinstance(c, str):
-                    _configs.append(load_yaml(c))
-                elif isinstance(c, dict):
-                    _configs.append(c)
-                elif c is not None:
-                    raise ValueError(f"Invalid config: {c}")
-            if len(_configs) == 0:
-                raise ValueError("No valid configs found.")
-            _config = merge_dicts(*_configs)
-        super().__init__(_config)
+        super().__init__(config)
         self._set_defaults()
         self.check_config_is_valid()
 
@@ -95,14 +93,15 @@ class ManySmallJobs(dict):
             f"--batched-results-dir {self.batched_results_dir}",
             f"--split-results-dir {self.split_results_dir}",
             f"--job-array {self['main_slurm_args']['array']}",
-            f"--parent-dir {parent_dir}"
+            f"--utils-parent-dir {utils_parent_dir}"
         ]
         main_python_script_args = ' '.join([parse_field(arg) for arg in main_python_script_args])
         self.main_job_script = main_script_template.render(dict(
             container_image=self['container_image'],
             python_script=main_python_script,
             python_script_args=main_python_script_args,
-            mpi=self['mpi']
+            mpi=self['mpi'],
+            use_gpu=self['use_gpu']
         ))
         self.main_job_id = None
 
@@ -113,7 +112,7 @@ class ManySmallJobs(dict):
             f"--tmp-dir {self.tmp_dir}",
             f"--job-array {self['main_slurm_args']['array']}",
             f"--ntasks-per-job {self['main_slurm_args']['ntasks']}",
-            f"--parent-dir {parent_dir}"
+            f"--utils-parent-dir {utils_parent_dir}"
         ]
         merge_python_script_args = ' '.join([parse_field(arg) for arg in merge_python_script_args])
         self.merge_job_script = merge_script_template.render(dict(
@@ -123,10 +122,10 @@ class ManySmallJobs(dict):
         ))
         self.merge_job_id = None
 
-    def check_config_is_valid(self):
+    def check_config_is_valid(self, container_test_cmds=['python3', '-c', 'import os']):
         check_has_keys(self, required_keys=['main_slurm_args', 'merge_slurm_args', 'results_dir', 'input_data_file', 'container_image', 'mpi'])
         if os.path.exists(self['container_image']):
-            res = subprocess.run(['apptainer', 'exec', self['container_image'], 'python3.11', '-c', 'import os'])
+            res = subprocess.run(['apptainer', 'exec', self['container_image'], *container_test_cmds])
             if res.returncode != 0:
                 raise ValueError(f"Container image '{self['container_image']}' is not valid.")
         else:
@@ -139,6 +138,8 @@ class ManySmallJobs(dict):
             self['main_slurm_args']['job-name'] = 'main'
         if 'job-name' not in self['merge_slurm_args']:
             self['merge_slurm_args']['job-name'] = 'merge'
+        if 'use_gpu' not in self:
+            self['use_gpu'] = False
 
     @property
     def array_elements(self):
@@ -176,9 +177,7 @@ class ManySmallJobs(dict):
         return os.path.join(self['results_dir'], 'merged_results.txt')
     
     def _write_job_script(self, job_script_str):
-        with tempfile.NamedTemporaryFile(mode='w', dir=self.job_scripts_dir, delete=False, prefix='submit_') as f:
-            f.write(job_script_str)
-        return f.name
+        return write_temp_file(job_script_str, dir=self.job_scripts_dir, prefix='submit_')
     
     def setup(self):
         # Main results directory
@@ -197,22 +196,35 @@ class ManySmallJobs(dict):
             ntasks_per_job=self['main_slurm_args']['ntasks']
         )
 
-    def submit_main(self):
+    def submit_main(self, **kwargs):
         self.setup()
         job_script_filename = self._write_job_script(self.main_job_script)
-        self.main_job_id = submit_slurm_job(slurm_args=self['main_slurm_args'], job_script_filename=job_script_filename)
+        self.main_job_id = submit_slurm_job(
+            slurm_args=self['main_slurm_args'], 
+            job_script_filename=job_script_filename, 
+            **kwargs
+        )
     
-    def submit_merge(self, dependency_id=None):
-        if dependency_id is not None:
-            slurm_args = dict(**self['merge_slurm_args'], dependency=f"afterok:{dependency_id}")
-        else:
-            slurm_args = self['merge_slurm_args']
+    def submit_merge(self, **kwargs):
         job_script_filename = self._write_job_script(self.merge_job_script)
-        self.merge_job_id = submit_slurm_job(slurm_args=slurm_args, job_script_filename=job_script_filename)
+        self.merge_job_id = submit_slurm_job(
+            slurm_args=self['merge_slurm_args'], 
+            job_script_filename=job_script_filename, 
+            dependency_ids=[[self.main_job_id]], 
+            dependency_conditions=['afterok'],
+            **kwargs
+        )
     
-    def submit(self):
-        self.submit_main()
-        self.submit_merge(dependency_id=self.main_job_id)
+    def submit(
+        self, 
+        dependency_ids: Optional[list[list[int]]] = None, 
+        dependency_conditions: Optional[list[str]] = None
+    ) -> tuple[int]:
+        """Submits the jobs. Returns ID of the last job(s) in the dependency chain."""
+        self.submit_main(dependency_ids=dependency_ids, dependency_conditions=dependency_conditions)
+        self.submit_merge()
+        JobIds = namedtuple('JobIds', ['main', 'merge'])
+        return JobIds(main=self.main_job_id, merge=self.merge_job_id)
     
     def cancel(self):
         cancel_slurm_job(self.main_job_id)

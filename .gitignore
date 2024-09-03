@@ -170,5 +170,6 @@ templates/single-gpu-job/
 *.out
 *.sif
 .tmp/
+tmp/
 
 tests/*/results/

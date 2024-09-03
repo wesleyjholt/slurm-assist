@@ -1,1 +1,1 @@
-from .many_small_jobs.top_level_interface import ManySmallJobs
+from .embarrassingly_parallel.top_level_interface import EmbarrassinglyParallelJobs

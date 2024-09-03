@@ -77,7 +77,7 @@ if __name__=='__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--array-id', type=int)
-    parser.add_argument('--parent-dir', type=str)
+    parser.add_argument('--utils-parent-dir', type=str)
     parser.add_argument('--single-run-module-parent-dir', type=str)
     parser.add_argument('--single-run-module', type=str)
     parser.add_argument('--single-run-fn', type=str)
@@ -88,7 +88,7 @@ if __name__=='__main__':
     args, unknown_args = parser.parse_known_args()
 
     t1 = time.time()
-    sys.path.append(args.parent_dir)
+    sys.path.append(args.utils_parent_dir)
     try:
         from utils import load_pickle, save_pickle, parse_slurm_array, to_zero_based_indexing
     except:
