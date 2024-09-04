@@ -1,0 +1,3 @@
+results_dir: test_single/results_3
+program_args:
+  bar: 300.0

@@ -4,25 +4,32 @@
 from typing import Union, Callable, Optional, Sequence, Any
 from ..job import JobGroup
 
+ListLike = Union[list, tuple]
 Config = Union[str, dict, list[Union[str, dict, None]]]
+JobGroupGenFunc = Callable[[Config], JobGroup]
+ConfigGenFunc = Callable[[Config, Any], tuple[Config, Any]]
 
 class SerialJobs(JobGroup):
     def __init__(
         self,
         config: Config,
-        job_group_gen_fns: list[Callable[[Config], JobGroup]],
-        config_gen_fns: list[Callable[[Config, Any], tuple[Config, Any]]],
+        job_group_gen_fns: Union[JobGroupGenFunc, list[JobGroupGenFunc]],
+        config_gen_fns: Union[ConfigGenFunc, list[ConfigGenFunc]],
         num_loops: Optional[int] = None,
         config_gen_state: Any = None
     ):
         super().__init__(config)
         self._config = super().__new__(config)
         self.i_submit = 0
+        if not isinstance(job_group_gen_fns, ListLike):
+            job_group_gen_fns = [job_group_gen_fns]
+        if not isinstance(config_gen_fns, ListLike):
+            config_gen_fns = [config_gen_fns]
         if num_loops is not None:
             all_job_group_gen_fns, all_config_gen_fns = [], []
             for _ in range(num_loops):
-                all_job_group_gen_fns += [job_group_gen_fns]
-                all_config_gen_fns += [config_gen_fns]
+                all_job_group_gen_fns += job_group_gen_fns
+                all_config_gen_fns += config_gen_fns
             self.job_group_gen_fns = all_job_group_gen_fns
             self.config_gen_fns = all_config_gen_fns
         else:

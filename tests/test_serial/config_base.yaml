@@ -1,8 +1,6 @@
-results_dir: test_single/results  # Required
 program: ./test_single/program.py  # Required
 program_args:  # Required
   foo: "I_am_the_argument_foo"
-  bar: 100.0
 container_image: mpi.sif  # Required
 slurm_args:  # Required
   job-name: test_single
