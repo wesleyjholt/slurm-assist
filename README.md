@@ -13,7 +13,7 @@ This package provides a ***convenient yet flexible*** interface for several type
 
 Many common HPC tasks naturally fit into `slurm-assist`'s framework. `slurm-assist` is designed for cases where:
 - You just want to get some runs going ASAP
-- You want a (mostly) pure python interface with the HPC
+- You want a (mostly) Python interface with the HPC
 - Your workflow isn't super niche
 - You are okay with using containers (this is generally a good idea)
 

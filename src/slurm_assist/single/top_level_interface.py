@@ -1,5 +1,5 @@
 import os
-from typing import Union
+from typing import Union, Optional
 from jinja2 import Template
 import subprocess
 from ..job import JobGroup
@@ -104,7 +104,12 @@ class SingleJob(JobGroup):
         os.makedirs(self.resource_monitoring_dir, exist_ok=True)
         os.makedirs(self.stdout_dir, exist_ok=True)
     
-    def submit(self, verbose=True):
+    def submit(
+        self, 
+        dependency_ids: Optional[list[list[int]]] = None, 
+        dependency_conditions: Optional[list[str]] = None,
+        verbose: Optional[bool] = True
+    ) -> tuple[int]:
         self.setup()
         job_script_filename = self._write_job_script(self.job_script)
 
@@ -113,7 +118,12 @@ class SingleJob(JobGroup):
             print('SINGLE JOB')
             print('==========')
 
-        self.job_id = submit_slurm_job(slurm_args=self['slurm_args'], job_script_filename=job_script_filename)
+        self.job_id = submit_slurm_job(
+            slurm_args=self['slurm_args'], 
+            job_script_filename=job_script_filename,
+            dependency_ids=dependency_ids,
+            dependency_conditions=dependency_conditions
+        )
 
         if verbose:
             print(f"Diagnostics")
@@ -124,6 +134,8 @@ class SingleJob(JobGroup):
                 print(f"Standard output/error files:    {os.path.abspath(self.stdout_dir)}/slurm-{self.job_id}.out")
             print(f"Resource monitoring directory:  {os.path.abspath(self.resource_monitoring_dir)}")
             print()
+        
+        return (self.job_id,)
 
     
     def cancel(self):

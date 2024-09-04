@@ -137,7 +137,7 @@ def submit_slurm_job(
     verbose: bool = Optional[True],
     dependency_ids: Optional[list[list[int]]] = None, 
     dependency_conditions: Optional[list[str]] = None
-):
+) -> int:
     from jinja2 import Template
     submit_command_template_content = \
 """sbatch \
