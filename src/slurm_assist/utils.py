@@ -3,6 +3,8 @@ import csv
 import pickle
 import subprocess
 import tempfile
+from glob import glob
+from gitignore_parser import parse_gitignore
 
 from typing import Union, Mapping, Optional
 ListLike = Union[list, tuple, set, range]
@@ -209,3 +211,46 @@ def estimate_total_time(num_runs, single_run_time, job_array_size, n_tasks_per_j
     minutes = (total_time - hours*3600)//60
     seconds = total_time - hours*3600 - minutes*60
     print(f'{hours:.0f} hours, {minutes:.0f} minutes, {seconds:.0f} seconds')
+
+def get_relevant_files(dir='.', path_to_slurm_assist_ignore=None, ignore_patterns=[]):
+    """Obtains relevant files (i.e., to push to a remote cluster)."""
+    def get_only_files(files):
+        return [file for file in files if os.path.isfile(file)]
+    files = get_only_files(glob(os.path.join(dir, '**'), recursive=True))
+    
+    if path_to_slurm_assist_ignore is None:
+        path_to_slurm_assist_ignore = os.path.join(dir, '.slurm-assist-ignore')
+    if os.path.exists(path_to_slurm_assist_ignore):
+        ignore = parse_gitignore(path_to_slurm_assist_ignore)
+        files = [file for file in files if not ignore(file)]
+    
+    # Remove files that match ignore_patterns
+    if len(ignore_patterns) > 0:
+        with tempfile.NamedTemporaryFile('w', dir=dir, prefix='.slurm-assist-ignore_') as f:
+            for pattern in ignore_patterns:
+                f.write(pattern+'\n')
+            print(f.file)
+            ignore = parse_gitignore(f.file)
+            files = [file for file in files if not ignore(file)]
+    
+    return files
+
+def copy_dir_to_remote(user, host, destination_path, ssh_key_path=None, **kwargs):
+    files = get_relevant_files(**kwargs)
+    files = '\n'.join(files)
+    
+    # Construct the command
+    command = f"echo {files} | xargs tar cf - | ssh {user}@{host} tar xf - -C {destination_path}"
+
+    # Execute the command using subprocess
+    process = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    # Capture the output and errors, if any
+    output = process.stdout.decode('utf-8')
+    error = process.stderr.decode('utf-8')
+
+    # Optionally print the output and error messages
+    if output:
+        print("Output:", output)
+    if error:
+        print("Error:", error)

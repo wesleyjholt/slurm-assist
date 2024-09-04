@@ -25,7 +25,8 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  "pyyaml"
+  "pyyaml",
+  "gitignore_parser"
 ]
 
 [tool.hatch.metadata]
