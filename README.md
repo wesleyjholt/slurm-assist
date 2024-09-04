@@ -4,7 +4,7 @@
 
 
 ## tl;dr
-Use python to submit Slurm jobs (even parallel\* ones) ***without ever touching the command line***.
+Use Python to submit Slurm jobs (even parallel\* ones) ***without ever touching the command line***.
 
 ## Overview
 This package provides a ***convenient yet flexible*** interface for several types of high-performance computing (HPC) jobs. In short, each "job type" is a python class (e.g., `SingleJob`, `EmbarrassinglyParallelJobs`) which can be created and submitted to the Slurm job scheduler *from a python script*. Many of the usual tedious tasks (setting up directory structures, writing job submission scripts, etc.) are taken care of in the background. This means less time setting up, and more time ***actually running computations***.
