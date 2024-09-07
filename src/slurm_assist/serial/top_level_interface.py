@@ -12,13 +12,17 @@ DependencyIds = tuple[int]
 DependencyIdsList = list[DependencyIds]
 DependencyCondList = list[str]
 DependencyGenFunc = Callable[[DependencyIds, Any], tuple[tuple[DependencyIdsList, DependencyCondList], Any]]
+StatelessDependencyGenFunc = Callable[[DependencyIds], tuple[DependencyIdsList, DependencyCondList]]
 State = Any
 
 class SerialJobsWithState(JobGroup):
-    """A collection of jobs to be run in serial.
+    """A collection of jobs to be run in serial, with state updated by each job submission.
     
     Parameters
     ----------
+    state: State
+        An object containing any necessary information about the state of the serial jobs.
+        This will be passed into job_group_gen_fns, config_gen_fns, and dependency_gen_fns.
     config: Config
         Global configurations for the overall job group
     job_group_gen_fns: Union[JobGroupGenFunc, list[JobGroupGenFunc]]
@@ -35,19 +39,18 @@ class SerialJobsWithState(JobGroup):
         single function or a list of such functions.
     num_loops: Optional[int]
         The number of times to loop through submitting the jobs. Defaults to 1.
-    state: Optional[State]
-        An object containing any necessary information about the state of the serial jobs.
-        This will be passed into job_group_gen_fns, config_gen_fns, and dependency_gen_fns.
     """
     def __init__(
         self,
+        state: Any,
         config: Config,
         job_group_gen_fns: Union[JobGroupGenFunc, list[JobGroupGenFunc]],
         config_gen_fns: Union[ConfigGenFunc, list[ConfigGenFunc]],
         dependency_gen_fns: Union[DependencyGenFunc, list[DependencyGenFunc]],
-        num_loops: int = 1,
-        state: Any = None
+        num_loops: int = 1
     ):
+        if None in (job_group_gen_fns, config_gen_fns, dependency_gen_fns):
+            raise ValueError("job_group_gen_fns, config_gen_fns, and dependency_gen_fns must all be specified.")
         super().__init__(config)
         self._config = config
         self.i_submit = 0
@@ -83,11 +86,23 @@ class SerialJobsWithState(JobGroup):
 
 
 class SerialJobs(SerialJobsWithState):
+    """Submit a collection of jobs in serial."""
     def __init__(
         self,
-        job_groups = None,
-        job_group_gen_fns = None,
-        dependency_gen_fns = None,
-        num_loops = None,
+        job_groups: list[JobGroup],
+        dependency_gen_fns: Union[StatelessDependencyGenFunc, list[StatelessDependencyGenFunc]],
+        num_loops: Optional[int] = 1,
     ):
-        
+        job_group_gen_fns = [lambda *args: (job_group, None) for job_group in job_groups]
+        config_gen_fns = [lambda *args: (None, None) for _ in job_groups]
+        if not isinstance(dependency_gen_fns, ListLike):
+            dependency_gen_fns = [dependency_gen_fns for _ in job_groups]
+        dependency_gen_fns = [lambda ids, _: (d(ids), _) for d in dependency_gen_fns]
+        super().__init__(
+            None,
+            None,
+            job_group_gen_fns,
+            config_gen_fns,
+            dependency_gen_fns,
+            num_loops
+        )
