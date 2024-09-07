@@ -86,5 +86,7 @@ For now, all jobs require you to run your data processing program (e.g., the pyt
 
 ***Coming soon!***
 
+
+Note that this package is designed for Mac/Linux users. Several functions will not work with Windows computers.
 ---
 \* Only specific types of parallel jobs (i.e., "embarrassingly parallel") are supported.

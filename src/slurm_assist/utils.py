@@ -229,21 +229,14 @@ def get_relevant_files(dir='.', path_to_slurm_assist_ignore=None, ignore_pattern
         with tempfile.NamedTemporaryFile('w', dir=dir, prefix='.slurm-assist-ignore_') as f:
             for pattern in ignore_patterns:
                 f.write(pattern+'\n')
-            print(f.file)
-            ignore = parse_gitignore(f.file)
+            ignore = parse_gitignore(f.name)
             files = [file for file in files if not ignore(file)]
     
     return files
 
-def copy_dir_to_remote(user, host, destination_path, ssh_key_path=None, **kwargs):
-    files = get_relevant_files(**kwargs)
-    files = '\n'.join(files)
-    
-    # Construct the command
-    command = f"echo {files} | xargs tar cf - | ssh {user}@{host} tar xf - -C {destination_path}"
-
+def execute_and_print_cmd(cmd):
     # Execute the command using subprocess
-    process = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.run(cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     # Capture the output and errors, if any
     output = process.stdout.decode('utf-8')
@@ -254,3 +247,34 @@ def copy_dir_to_remote(user, host, destination_path, ssh_key_path=None, **kwargs
         print("Output:", output)
     if error:
         print("Error:", error)
+
+def copy_dir_to_remote(user, host, destination_path, ssh_key_path=None, **kwargs):
+    files = get_relevant_files(**kwargs)
+    files = ' '.join(files)
+
+    # if generate_ssh_key_if_needed:
+    #     if ssh_key_path is None:
+    #         ssh_key_path = os.path.expanduser('~/.ssh/id_rsa')
+    #     if not os.path.exists(ssh_key_path):
+    #         print('Creating new ssh key...')
+    #         command = f"ssh-keygen -f {ssh_key_path} -P '' "
+    #         execute_and_print_cmd(command)
+    #         print('done.\n')
+    #         print('Adding ssh key to remote...')
+    #         command = f"ssh-copy-id -i {ssh_key_path}.pub {user}@{host}"
+    #         execute_and_print_cmd(command)
+    #         print('done.\n')
+    #     else:
+    #         print('ssh key already exists')
+    
+    # Construct the command
+    extra_key_arg = ''
+    if ssh_key_path is not None:
+        if os.path.exists(ssh_key_path):
+            extra_key_arg = f'-i {ssh_key_path}'
+    command = f"echo \"{files}\" | xargs tar cf - | ssh {extra_key_arg} {user}@{host} \"mkdir -p {destination_path} && tar xf - -C {destination_path}\" "
+    print(command)
+    execute_and_print_cmd(command)
+
+    # TODO: Finish this (make it a job type). See the colha submit.sh for postprocess as an example
+    # sbatch --dependency afterok:$jobid -A $ACCOUNT --array 1-$ARRAY_SIZE_MOVE --mem-per-cpu $MEM_PER_CPU_MOVE --ntasks 1 --time $WALLTIME_MOVE _move_results.sh $@

@@ -12,5 +12,5 @@ copy_dir_to_remote(
     host=args.host,
     destination_path=args.destination_path,
     dir='test_copy_dir_to_remote', 
-    ignore_patterns=['dir2/']
+    ignore_patterns=['*/dir2/*']
 )

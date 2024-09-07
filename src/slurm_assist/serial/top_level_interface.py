@@ -14,7 +14,7 @@ DependencyCondList = list[str]
 DependencyGenFunc = Callable[[DependencyIds, Any], tuple[tuple[DependencyIdsList, DependencyCondList], Any]]
 State = Any
 
-class SerialJobs(JobGroup):
+class SerialJobsWithState(JobGroup):
     """A collection of jobs to be run in serial.
     
     Parameters
@@ -80,3 +80,14 @@ class SerialJobs(JobGroup):
     def submit(self):
         while self.i_submit < len(self.job_group_gen_fns):
             self.submit_next()
+
+
+class SerialJobs(SerialJobsWithState):
+    def __init__(
+        self,
+        job_groups = None,
+        job_group_gen_fns = None,
+        dependency_gen_fns = None,
+        num_loops = None,
+    ):
+        
