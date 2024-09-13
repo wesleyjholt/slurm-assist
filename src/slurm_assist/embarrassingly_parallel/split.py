@@ -19,7 +19,6 @@ DESCRIPTION:
 """
 
 import os
-from ..utils import load_csv, save_pickle
 
 def main(
     input_file: str,
@@ -73,7 +72,6 @@ if __name__ == '__main__':
     import argparse
     import time
     import sys
-    import importlib
 
     parser = argparse.ArgumentParser(description='Split data into batches and save to files.')
     parser.add_argument('--utils-parent-dir', type=str)
@@ -87,7 +85,7 @@ if __name__ == '__main__':
     t1 = time.time()
     sys.path.append(args.utils_parent_dir)
     try:
-        from utils import save_pickle
+        from utils import load_csv, save_pickle
     except:
         raise Exception('Could not import utils module. Make sure the --parent-dir argument is pointing to the package\'s embarrassingly_parallel directory.')
     main(args.input_file, args.batched_data_dir, args.job_array, args.ntasks_per_job, args.generate_new_ids)
