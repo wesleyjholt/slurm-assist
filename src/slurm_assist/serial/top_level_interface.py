@@ -111,8 +111,8 @@ class SerialJobs(SerialJobsWithState):
             raise ValueError("Invalid number of dependency generator functions (dependency_gen_fns). Must be either 1, len(job_groups) - 1, or len(job_groups).")
         dependency_gen_fns_with_state = [lambda ids, _: (d(ids), _) for d in dependency_gen_fns]
         super().__init__(
-            None,
-            None,
+            None,  # no state
+            None,  # no config
             job_group_gen_fns_with_state,
             config_gen_fns_with_state,
             dependency_gen_fns_with_state
