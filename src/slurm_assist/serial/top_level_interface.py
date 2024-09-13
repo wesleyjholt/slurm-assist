@@ -100,11 +100,11 @@ class SerialJobs(SerialJobsWithState):
         job_group_gen_fns_with_state = [lambda *_: (job_group, None) for job_group in job_groups]
         config_gen_fns_with_state = [lambda *_: (None, None) for j in job_groups]
         if first_job_dependency_ids is None:
-            _first_dependency_gen_fn = [lambda ids: (None, None)]
+            _first_dependency_gen_fn = lambda _: (None, None)
         else:
             _first_dependency_gen_fn = lambda _: (first_job_dependency_ids, first_job_dependency_conditions)
         if not isinstance(dependency_gen_fns, ListLike):
-            dependency_gen_fns = [_first_dependency_gen_fn] + [dependency_gen_fns for _ in job_groups]
+            dependency_gen_fns = [_first_dependency_gen_fn] + [dependency_gen_fns for _ in job_groups[1:]]
         elif len(dependency_gen_fns) == len(job_groups) - 1:
             dependency_gen_fns = [_first_dependency_gen_fn] + list(dependency_gen_fns)
         elif len(dependency_gen_fns) != len(job_groups):
