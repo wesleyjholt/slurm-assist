@@ -3,7 +3,7 @@ import subprocess
 from typing import Union, Optional
 from collections import namedtuple
 from jinja2 import Template
-from . import run, merge
+from . import split, run, merge
 from .. import SingleJob
 from ..job import JobGroup
 from ..utils import (
@@ -16,10 +16,11 @@ from ..utils import (
     cancel_slurm_job,
     write_temp_file
 )
-from .split_data import main as split_data
+from .split import main as split_data
 
 from .. import utils
 utils_parent_dir = os.path.dirname(os.path.abspath(utils.__file__))
+split_python_script = os.path.abspath(split.__file__)
 main_python_script = os.path.abspath(run.__file__)
 merge_python_script = os.path.abspath(merge.__file__)
 
@@ -214,27 +215,18 @@ class EmbarrassinglyParallelJobs(JobGroup):
         os.makedirs(self.split_results_dir, exist_ok=True)
         os.makedirs(self.resource_monitoring_dir, exist_ok=True)
         os.makedirs(self.stdout_dir, exist_ok=True)
-        
-        # # Split data
-        # split_data(
-        #     input_file=self['input_data_file'],
-        #     batched_data_dir=self.batched_data_dir,
-        #     job_array=self.array_elements,
-        #     ntasks_per_job=self['main_slurm_args']['ntasks'],
-        #     generate_new_ids=self['generate_new_ids']
-        # )
     
     def submit_split(self, **kwargs):
         split_job = SingleJob(
             dict(
-                program=split_data,
-                program_args=[
-                    f"--input-file {self['input_data_file']}",
-                    f"--batched-data-dir {self.batched_data_dir}",
-                    f"--job-array {self['main_slurm_args']['array']}",
-                    f"--ntasks-per-job {self['main_slurm_args']['ntasks']}",
-                    f"--generate-new-ids {self['generate_new_ids']}"
-                ],
+                program=split_python_script,
+                program_args=dict(
+                    input_file=self['input_data_file'],
+                    batched_data_dir=self.batched_data_dir,
+                    job_array=self.array_elements,
+                    ntasks_per_job=self['main_slurm_args']['ntasks'],
+                    generate_new_ids=self['generate_new_ids']
+                ),
                 tmp=self.tmp_dir,
                 container_image=self['container_image'],
                 slurm_args=dict(
