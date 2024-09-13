@@ -91,7 +91,7 @@ class EmbarrassinglyParallelJobs(JobGroup):
         main_python_script_args = [
             f"--single-run-module-parent-dir {self['single_run_module_parent_dir']}",
             f"--single-run-module {self['single_run_module']}",
-            f"--single-run-fn {self['single_run_fn']}",
+            f"--single-run-fn {self['single_run_function']}",
             f"--batched-data-dir {self.batched_data_dir}",
             f"--batched-results-dir {self.batched_results_dir}",
             f"--split-results-dir {self.split_results_dir}",
