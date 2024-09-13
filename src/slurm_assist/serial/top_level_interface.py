@@ -73,6 +73,10 @@ class SerialJobsWithState(JobGroup):
         config_i, self.config_gen_state = self.config_gen_fns[self.i_submit](self._config, self.config_gen_state)
         job_group_i, self.config_gen_state = self.job_group_gen_fns[self.i_submit](config_i, self.config_gen_state)
         print(self.i_submit)
+        print(self.last_job_ids)
+        print(self.config_gen_state)
+        print(self.dependency_gen_fns[self.i_submit])
+        print(self.dependency_gen_fns)
         dep, self.config_gen_state = self.dependency_gen_fns[self.i_submit](self.last_job_ids, self.config_gen_state)
         # if self.i_submit > 0:
         #     dep, self.config_gen_state = self.dependency_gen_fns[self.i_submit - 1](self.last_job_ids, self.config_gen_state)
@@ -112,9 +116,9 @@ class SerialJobs(SerialJobsWithState):
             raise ValueError("Invalid number of dependency generator functions (dependency_gen_fns). Must be either 1, len(job_groups) - 1, or len(job_groups).")
         dependency_gen_fns_with_state = [lambda ids, _: (d(ids), _) for d in dependency_gen_fns]
         super().__init__(
-            None,  # no state
-            None,  # no config
-            job_group_gen_fns_with_state,
-            config_gen_fns_with_state,
-            dependency_gen_fns_with_state
+            state=None,  # no state
+            config=None,  # no config
+            job_group_gen_fns=job_group_gen_fns_with_state,
+            config_gen_fns=config_gen_fns_with_state,
+            dependency_gen_fns=dependency_gen_fns_with_state
         )
