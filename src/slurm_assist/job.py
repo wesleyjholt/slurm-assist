@@ -1,4 +1,4 @@
-from .utils import load_yaml, merge_dicts
+from .utils import load_yaml, merge_dicts, convert_slurm_keys
 
 class JobGroup(dict):
     def __init__(self, config):
@@ -25,7 +25,7 @@ class JobGroup(dict):
                 if len(_configs) == 0:
                     raise ValueError("No valid configs found.")
                 _config = merge_dicts(*_configs)
-            super().__init__(_config)
+            super().__init__(convert_slurm_keys(_config))
     
     def submit(self):
         raise NotImplementedError('submit method is not implemented. Implement me!')

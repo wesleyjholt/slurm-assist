@@ -90,8 +90,7 @@ class SerialJobs(SerialJobsWithState):
     def __init__(
         self,
         job_groups: list[JobGroup],
-        dependency_gen_fns: Union[StatelessDependencyGenFunc, list[StatelessDependencyGenFunc]],
-        num_loops: Optional[int] = 1,
+        dependency_gen_fns: Union[StatelessDependencyGenFunc, list[StatelessDependencyGenFunc]]
     ):
         job_group_gen_fns = [lambda *args: (job_group, None) for job_group in job_groups]
         config_gen_fns = [lambda *args: (None, None) for _ in job_groups]
@@ -103,6 +102,5 @@ class SerialJobs(SerialJobsWithState):
             None,
             job_group_gen_fns,
             config_gen_fns,
-            dependency_gen_fns,
-            num_loops
+            dependency_gen_fns
         )

@@ -1,3 +1,5 @@
-results_dir: test_single/results_2
+results_dir: test_serial/results_2
 program_args:
   bar: 200.0
+slurm_args:
+  job-name: test_serial_2

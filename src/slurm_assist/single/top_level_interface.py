@@ -66,14 +66,11 @@ class SingleJob(JobGroup):
         self.job_id = None
     
     def check_config_is_valid(self):
-        check_has_keys(self, required_keys=['slurm_args', 'program', 'program_args', 'results_dir', 'container_image'])
+        check_has_keys(self, required_keys=['slurm_args', 'program', 'program_args', 'tmp', 'container_image'])
         
     @property
     def tmp_dir(self):
-        if 'tmp_dir' in self.keys():
-            return os.path.relpath(self['tmp_dir'])
-        else:
-            return os.path.join(self['results_dir'], 'tmp')
+        return self['tmp']
     
     @property
     def job_scripts_dir(self):
@@ -98,7 +95,6 @@ class SingleJob(JobGroup):
         return write_temp_file(job_script_str, dir=self.job_scripts_dir, prefix='submit_')
 
     def setup(self):
-        remove_and_make_dir(self['results_dir'])
         remove_and_make_dir(self.tmp_dir)
         os.makedirs(self.job_scripts_dir, exist_ok=True)
         os.makedirs(self.resource_monitoring_dir, exist_ok=True)

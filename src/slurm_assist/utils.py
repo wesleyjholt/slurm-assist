@@ -278,3 +278,15 @@ def copy_dir_to_remote(user, host, destination_path, ssh_key_path=None, **kwargs
 
     # TODO: Finish this (make it a job type). See the colha submit.sh for postprocess as an example
     # sbatch --dependency afterok:$jobid -A $ACCOUNT --array 1-$ARRAY_SIZE_MOVE --mem-per-cpu $MEM_PER_CPU_MOVE --ntasks 1 --time $WALLTIME_MOVE _move_results.sh $@
+
+def _convert_keys(d):
+    return {k.replace('_', '-'): v for k, v in d.items()}
+
+def convert_slurm_keys(d):
+    """Convert all slurm args keys to use dashes instead of underscores."""
+    for k, v in d.items():
+        if k.startswith('slurm_'):
+            d[k] = _convert_keys(v)
+        elif isinstance(v, dict):
+            convert_slurm_keys(v)
+    return d

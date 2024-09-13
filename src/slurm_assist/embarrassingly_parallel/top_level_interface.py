@@ -137,9 +137,11 @@ class EmbarrassinglyParallelJobs(JobGroup):
                 raise ValueError(f"Container image '{self['container_image']}' is not valid.")
         else:
             raise ValueError(f"Container image '{self['container_image']}' does not exist.")
+    
+    def check_input_data_file(self):
         if not os.path.isfile(self['input_data_file']):
             raise ValueError(f"Input data file '{self['input_data_file']}' is not a file.")
-    
+            
     def _set_defaults(self):
         if 'job-name' not in self['main_slurm_args']:
             self['main_slurm_args']['job-name'] = 'main'
@@ -221,6 +223,7 @@ class EmbarrassinglyParallelJobs(JobGroup):
         )
 
     def submit_main(self, **kwargs):
+        self.check_input_data_file()
         self.setup()
         job_script_filename = self._write_job_script(self.main_job_script)
         self.main_job_id = submit_slurm_job(

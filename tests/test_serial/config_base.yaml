@@ -1,9 +1,8 @@
-program: ./test_single/program.py  # Required
+program: ./test_serial/program.py  # Required
 program_args:  # Required
   foo: "I_am_the_argument_foo"
 container_image: mpi.sif  # Required
 slurm_args:  # Required
-  job-name: test_single
   time: "00:05:00"
   nodes: 1
   ntasks: 1
