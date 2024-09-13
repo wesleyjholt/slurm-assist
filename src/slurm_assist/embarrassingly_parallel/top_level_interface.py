@@ -237,7 +237,6 @@ class EmbarrassinglyParallelJobs(JobGroup):
                 ],
                 tmp=self.tmp_dir,
                 container_image=self['container_image'],
-                log_dir=self.log_dir,
                 slurm_args=dict(
                     job_name='split',
                     time='00:10:00',

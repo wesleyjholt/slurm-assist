@@ -54,6 +54,7 @@ class SingleJob(JobGroup):
     ):
         super().__init__(config)
         self.check_config_is_valid()
+        print(self)
 
         self.job_script = script_template.render(dict(
             container_image=self['container_image'],
