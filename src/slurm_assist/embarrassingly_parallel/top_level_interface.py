@@ -224,7 +224,7 @@ class EmbarrassinglyParallelJobs(JobGroup):
         )
 
     def submit_main(self, **kwargs):
-        self.check_input_data_file()
+        # self.check_input_data_file()
         self.setup()
         job_script_filename = self._write_job_script(self.main_job_script)
         self.main_job_id = submit_slurm_job(
