@@ -4,6 +4,7 @@ from typing import Union, Optional
 from collections import namedtuple
 from jinja2 import Template
 from . import run, merge
+from .. import SingleJob
 from ..job import JobGroup
 from ..utils import (
     check_has_keys, 
@@ -214,22 +215,47 @@ class EmbarrassinglyParallelJobs(JobGroup):
         os.makedirs(self.resource_monitoring_dir, exist_ok=True)
         os.makedirs(self.stdout_dir, exist_ok=True)
         
-        # Split data
-        split_data(
-            input_file=self['input_data_file'],
-            batched_data_dir=self.batched_data_dir,
-            job_array=self.array_elements,
-            ntasks_per_job=self['main_slurm_args']['ntasks'],
-            generate_new_ids=self['generate_new_ids']
+        # # Split data
+        # split_data(
+        #     input_file=self['input_data_file'],
+        #     batched_data_dir=self.batched_data_dir,
+        #     job_array=self.array_elements,
+        #     ntasks_per_job=self['main_slurm_args']['ntasks'],
+        #     generate_new_ids=self['generate_new_ids']
+        # )
+    
+    def submit_split(self, **kwargs):
+        split_job = SingleJob(
+            dict(
+                program=split_data,
+                program_args=[
+                    f"--input-file {self['input_data_file']}",
+                    f"--batched-data-dir {self.batched_data_dir}",
+                    f"--job-array {self['main_slurm_args']['array']}",
+                    f"--ntasks-per-job {self['main_slurm_args']['ntasks']}",
+                    f"--generate-new-ids {self['generate_new_ids']}"
+                ],
+                tmp=self.tmp_dir,
+                container_image=self['container_image'],
+                log_dir=self.log_dir,
+                slurm_args=dict(
+                    job_name='split',
+                    time='00:10:00',
+                    ntasks=1,
+                    mem='1G'
+                ),
+            )
         )
+        self.split_job_id = split_job.submit(**kwargs)
 
     def submit_main(self, **kwargs):
-        # self.check_input_data_file()
         self.setup()
         job_script_filename = self._write_job_script(self.main_job_script)
         self.main_job_id = submit_slurm_job(
             slurm_args=self['main_slurm_args'], 
             job_script_filename=job_script_filename, 
+            dependency_ids=[[self.split_job_id]], 
+            dependency_conditions=['afterok'],
             **kwargs
         )
     
@@ -252,10 +278,17 @@ class EmbarrassinglyParallelJobs(JobGroup):
         """Submits the jobs. Returns ID of the last job(s) in the dependency chain."""
         if verbose:
             print()
+            print('SPLIT JOB')
+            print('========')
+        
+        self.submit_split(dependency_ids=dependency_ids, dependency_conditions=dependency_conditions)
+        
+        if verbose:
+            print()
             print('MAIN JOB')
             print('========')
 
-        self.submit_main(dependency_ids=dependency_ids, dependency_conditions=dependency_conditions)
+        self.submit_main()
 
         if verbose:
             print(f"Diagnostics")
@@ -278,8 +311,8 @@ class EmbarrassinglyParallelJobs(JobGroup):
             print(f"Resource monitoring directory:  {os.path.abspath(self.resource_monitoring_dir)}")
             print()
 
-        JobIds = namedtuple('JobIds', ['main', 'merge'])
-        return JobIds(main=self.main_job_id, merge=self.merge_job_id)
+        JobIds = namedtuple('JobIds', ['split', 'main', 'merge'])
+        return JobIds(split=self.split_job_id, main=self.main_job_id, merge=self.merge_job_id)
     
     def cancel(self):
         cancel_slurm_job(self.main_job_id)

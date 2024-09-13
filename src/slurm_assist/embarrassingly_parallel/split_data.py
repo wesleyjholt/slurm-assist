@@ -68,3 +68,14 @@ def main(
     
     # Return the number of data batches
     return len(data_batches)
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='Split data into batches and save to files.')
+    parser.add_argument('--input-file', type=str, help='Path to the input data file.')
+    parser.add_argument('--batched-data-dir', type=str, help='Directory to save the batched data.')
+    parser.add_argument('--job-array', type=int, nargs='+', help='Array of job numbers.')
+    parser.add_argument('--ntasks-per-job', type=int, default=1, help='Number of tasks per job.')
+    parser.add_argument('--generate-new-ids', action='store_true', help='Generate new IDs for the data entries.')
+    args = parser.parse_args()
+    main(args.input_file, args.batched_data_dir, args.job_array, args.ntasks_per_job, args.generate_new_ids)
