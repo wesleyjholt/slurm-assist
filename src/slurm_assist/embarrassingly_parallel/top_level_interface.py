@@ -237,7 +237,7 @@ class EmbarrassinglyParallelJobs(JobGroup):
                 ),
             )
         )
-        self.split_job_id = split_job.submit(**kwargs)
+        self.split_job_id = split_job.submit(**kwargs)[-1]  # Gets the last job ID (in this case, there is only one)
 
     def submit_main(self, **kwargs):
         self.setup()
@@ -269,9 +269,15 @@ class EmbarrassinglyParallelJobs(JobGroup):
         """Submits the jobs. Returns ID of the last job(s) in the dependency chain."""
         if verbose:
             print()
-            print('SPLIT JOB')
-            print('========')
+            print(' ---------------')
+            print('| PARALLEL JOBS |')
+            print(' ---------------')
         
+        if verbose:
+            print()
+            print('SPLIT JOB')
+            print('=========')
+
         self.submit_split(dependency_ids=dependency_ids, dependency_conditions=dependency_conditions)
         
         if verbose:

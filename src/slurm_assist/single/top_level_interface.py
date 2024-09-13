@@ -112,8 +112,9 @@ class SingleJob(JobGroup):
 
         if verbose:
             print()
-            print('SINGLE JOB')
-            print('==========')
+            print(' ------------')
+            print('| SINGLE JOB |')
+            print(' ------------')
 
         self.job_id = submit_slurm_job(
             slurm_args=self['slurm_args'], 
