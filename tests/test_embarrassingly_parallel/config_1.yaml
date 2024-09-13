@@ -12,6 +12,4 @@ main_slurm_args:
   ntasks: 2
   account: standby
 merge_slurm_args:
-  time: 00:10:00
-  mem-per-cpu: 1024M
-  account: standby
+  time: 00:20:00

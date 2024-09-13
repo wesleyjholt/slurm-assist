@@ -14,7 +14,9 @@ from ..utils import (
     submit_slurm_job, 
     remove_and_make_dir, 
     cancel_slurm_job,
-    write_temp_file
+    write_temp_file,
+    convert_slurm_keys,
+    merge_dicts
 )
 from .split import main as split_data
 
@@ -112,27 +114,33 @@ class EmbarrassinglyParallelJobs(JobGroup):
         ))
         self.main_job_id = None
 
-        # The "merge job"
-        merge_python_script_args = [
-            f"--batched-results-dir {self.batched_results_dir}",
-            f"--merged-results-file {self.merged_results_file}",
-            f"--tmp-dir {self.tmp_dir}",
-            f"--job-array {self['main_slurm_args']['array']}",
-            f"--ntasks-per-job {self['main_slurm_args']['ntasks']}",
-            f"--utils-parent-dir {utils_parent_dir}"
-        ]
-        merge_python_script_args = ' '.join([parse_field(arg) for arg in merge_python_script_args])
-        self.merge_job_script = merge_script_template.render(dict(
-            container_image=self['container_image'],
-            python_script=merge_python_script,
-            python_script_args=merge_python_script_args,
-            stdout_dir=self.stdout_dir,
-            resource_monitoring_dir=self.resource_monitoring_dir
-        ))
-        self.merge_job_id = None
+        self._default_split_merge_slurm_args = dict(
+            job_name='merge',
+            time='00:10:00',
+            mem='1G'
+        )
+
+        # # The "merge job"
+        # merge_python_script_args = [
+        #     f"--batched-results-dir {self.batched_results_dir}",
+        #     f"--merged-results-file {self.merged_results_file}",
+        #     f"--tmp-dir {self.tmp_dir}",
+        #     f"--job-array {self['main_slurm_args']['array']}",
+        #     f"--ntasks-per-job {self['main_slurm_args']['ntasks']}",
+        #     f"--utils-parent-dir {utils_parent_dir}"
+        # ]
+        # merge_python_script_args = ' '.join([parse_field(arg) for arg in merge_python_script_args])
+        # self.merge_job_script = merge_script_template.render(dict(
+        #     container_image=self['container_image'],
+        #     python_script=merge_python_script,
+        #     python_script_args=merge_python_script_args,
+        #     stdout_dir=self.stdout_dir,
+        #     resource_monitoring_dir=self.resource_monitoring_dir
+        # ))
+        # self.merge_job_id = None
 
     def check_config_is_valid(self, container_test_cmds=['python3', '-c', 'import os']):
-        check_has_keys(self, required_keys=['main_slurm_args', 'merge_slurm_args', 'results_dir', 'input_data_file', 'container_image', 'mpi', 'generate_new_ids'])
+        check_has_keys(self, required_keys=['main_slurm_args', 'results_dir', 'input_data_file', 'container_image', 'mpi', 'generate_new_ids'])
         if os.path.exists(self['container_image']):
             res = subprocess.run(['apptainer', 'exec', self['container_image'], *container_test_cmds])
             if res.returncode != 0:
@@ -151,6 +159,30 @@ class EmbarrassinglyParallelJobs(JobGroup):
             self['merge_slurm_args']['job-name'] = 'merge'
         if 'use_gpu' not in self:
             self['use_gpu'] = False
+
+    @property
+    def split_slurm_args(self):
+        if 'split_slurm_args' in self.keys():
+            return merge_dicts(
+                convert_slurm_keys(self._default_split_merge_slurm_args),
+                convert_slurm_keys(self['split_slurm_args'])
+            )
+        else:
+            return convert_slurm_keys(self._default_split_merge_slurm_args)
+
+    @property
+    def main_slurm_args(self):
+        return convert_slurm_keys(self['main_slurm_args'])
+    
+    @property
+    def merge_slurm_args(self):
+        if 'merge_slurm_args' in self.keys():
+            return merge_dicts(
+                convert_slurm_keys(self._default_split_merge_slurm_args),
+                convert_slurm_keys(self['merge_slurm_args'])
+            )
+        else:
+            return convert_slurm_keys(self._default_split_merge_slurm_args)
 
     @property
     def array_elements(self):
@@ -216,7 +248,11 @@ class EmbarrassinglyParallelJobs(JobGroup):
         os.makedirs(self.resource_monitoring_dir, exist_ok=True)
         os.makedirs(self.stdout_dir, exist_ok=True)
     
-    def submit_split(self, **kwargs):
+    def submit_split(
+        self,
+        dependency_ids=None,
+        dependency_conditions=None
+    ):
         split_job = SingleJob(
             dict(
                 program=split_python_script,
@@ -229,36 +265,63 @@ class EmbarrassinglyParallelJobs(JobGroup):
                 ),
                 tmp=self.tmp_dir,
                 container_image=self['container_image'],
-                slurm_args=dict(
-                    job_name='split',
-                    time='00:10:00',
-                    ntasks=1,
-                    mem='1G'
-                ),
+                slurm_args=self.split_slurm_args
             )
         )
-        self.split_job_id = split_job.submit(**kwargs)[-1]  # Gets the last job ID (in this case, there is only one)
+        self.split_job_id = split_job.submit(
+            dependency_ids=dependency_ids,
+            dependency_conditions=dependency_conditions
+        )[-1]  # Gets the last job ID (in this case, there is only one)
 
-    def submit_main(self, **kwargs):
-        self.setup()
+    def submit_main(
+        self,
+        dependency_ids=None,
+        dependency_conditions=None
+    ):
         job_script_filename = self._write_job_script(self.main_job_script)
         self.main_job_id = submit_slurm_job(
             slurm_args=self['main_slurm_args'], 
             job_script_filename=job_script_filename, 
-            dependency_ids=[[self.split_job_id]], 
-            dependency_conditions=['afterok'],
-            **kwargs
+            dependency_ids=[[self.split_job_id]] if dependency_ids is None else dependency_ids, 
+            dependency_conditions=['afterok'] if dependency_conditions is None else dependency_conditions,
         )
     
-    def submit_merge(self, **kwargs):
-        job_script_filename = self._write_job_script(self.merge_job_script)
-        self.merge_job_id = submit_slurm_job(
-            slurm_args=self['merge_slurm_args'], 
-            job_script_filename=job_script_filename, 
-            dependency_ids=[[self.main_job_id]], 
-            dependency_conditions=['afterok'],
-            **kwargs
+    # def submit_merge(self, **kwargs):
+    #     job_script_filename = self._write_job_script(self.merge_job_script)
+    #     self.merge_job_id = submit_slurm_job(
+    #         slurm_args=self['merge_slurm_args'], 
+    #         job_script_filename=job_script_filename, 
+    #         dependency_ids=[[self.main_job_id]], 
+    #         dependency_conditions=['afterok'],
+    #         **kwargs
+    #     )
+
+    def submit_merge(
+        self,
+        dependency_ids=None,
+        dependency_conditions=None
+    ):
+        merge_job = SingleJob(
+            dict(
+                program=merge_python_script,
+                program_args=dict(
+                    utils_parent_dir=utils_parent_dir,
+                    batched_results_dir=self.batched_results_dir,
+                    merged_results_file=self.merged_results_file,
+                    tmp_dir=self.tmp_dir,
+                    job_array=self['main_slurm_args']['array'],
+                    ntasks_per_job=self['main_slurm_args']['ntasks']
+                ),
+                tmp=self.tmp_dir,
+                container_image=self['container_image'],
+                slurm_args=self.merge_slurm_args
+            )
         )
+        self.merge_job_id = merge_job.submit(
+            dependency_ids=[[self.main_job_id]] if dependency_ids is None else dependency_ids, 
+            dependency_conditions=['afterok'] if dependency_conditions is None else dependency_conditions,
+        )[-1]  # Gets the last job ID (in this case, there is only one)
+
     
     def submit(
         self, 
@@ -272,6 +335,8 @@ class EmbarrassinglyParallelJobs(JobGroup):
             print(' ---------------')
             print('| PARALLEL JOBS |')
             print(' ---------------')
+        
+        self.setup()
         
         if verbose:
             print()
