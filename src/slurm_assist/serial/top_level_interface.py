@@ -1,6 +1,7 @@
 # Each job takes in config files and outputs results.
 # Each transition takes in config files and outputs more config files.
 
+from functools import partial
 from typing import Union, Callable, Optional, Sequence, Any
 from ..job import JobGroup
 
@@ -114,7 +115,9 @@ class SerialJobs(SerialJobsWithState):
             dependency_gen_fns = [_first_dependency_gen_fn] + list(dependency_gen_fns)
         elif len(dependency_gen_fns) != len(job_groups):
             raise ValueError("Invalid number of dependency generator functions (dependency_gen_fns). Must be either 1, len(job_groups) - 1, or len(job_groups).")
-        dependency_gen_fns_with_state = [lambda ids, _: (d(ids), _) for d in dependency_gen_fns]
+        def dependency_gen_fn_with_state(dependency_gen_fn_no_state, ids, state):
+            return dependency_gen_fn_no_state(ids), state
+        dependency_gen_fns_with_state = [partial(dependency_gen_fn_with_state, d) for d in dependency_gen_fns]
         super().__init__(
             state=None,  # no state
             config=None,  # no config
