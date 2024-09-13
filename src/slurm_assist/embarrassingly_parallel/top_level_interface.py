@@ -130,7 +130,7 @@ class EmbarrassinglyParallelJobs(JobGroup):
         self.merge_job_id = None
 
     def check_config_is_valid(self, container_test_cmds=['python3', '-c', 'import os']):
-        check_has_keys(self, required_keys=['main_slurm_args', 'merge_slurm_args', 'results_dir', 'input_data_file', 'container_image', 'mpi'])
+        check_has_keys(self, required_keys=['main_slurm_args', 'merge_slurm_args', 'results_dir', 'input_data_file', 'container_image', 'mpi', 'generate_new_ids'])
         if os.path.exists(self['container_image']):
             res = subprocess.run(['apptainer', 'exec', self['container_image'], *container_test_cmds])
             if res.returncode != 0:
@@ -219,7 +219,8 @@ class EmbarrassinglyParallelJobs(JobGroup):
             input_file=self['input_data_file'],
             batched_data_dir=self.batched_data_dir,
             job_array=self.array_elements,
-            ntasks_per_job=self['main_slurm_args']['ntasks']
+            ntasks_per_job=self['main_slurm_args']['ntasks'],
+            generate_new_ids=self['generate_new_ids']
         )
 
     def submit_main(self, **kwargs):

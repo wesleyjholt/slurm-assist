@@ -4,6 +4,7 @@ single_run_module: single_run
 single_run_function: single_run
 container_image: mpi.sif
 mpi: pmi2
+generate_new_ids: true
 main_slurm_args: 
   array: 1-4
   time: 00:20:00

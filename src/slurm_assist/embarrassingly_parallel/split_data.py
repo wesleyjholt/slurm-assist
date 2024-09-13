@@ -26,6 +26,7 @@ def main(
     batched_data_dir: str,
     job_array: list[int],
     ntasks_per_job: int,
+    generate_new_ids: bool
 ):
     """Split data into batches and save to files."""
     
@@ -35,7 +36,18 @@ def main(
     data = load_csv(input_file)
     
     # Give each data entry a unique ID
-    data = list(zip(range(len(data)), data))  # [(id, data), ...]
+    if generate_new_ids:
+        print('Generating new IDs')
+        data = list(zip(range(len(data)), data))  # [(id, data), ...]
+    else:
+        is_valid_id = list(map(lambda x: str(x[0]).isdigit(), data))
+        if not all(is_valid_id):
+            raise ValueError('Tried to parse the the first column of the input csv file {input_file} as IDs, but \n \
+                             at least one entry is not an integer. Set generate_new_ids=True to generate new IDs.')
+        print('Using existing IDs')
+        ids = list(map(lambda x: int(x[0]), data))
+        data = list(map(lambda x: x[1:], data))
+        data = list(zip(ids, data))  # [(id, data), ...]
     
     # Define helper function for chunking the data
     def _split_list(a: list, n: int) -> list[tuple[int, list]]:
