@@ -92,7 +92,7 @@ if __name__=='__main__':
     try:
         from utils import load_pickle, save_pickle, parse_slurm_array, to_zero_based_indexing
     except:
-        raise Exception('Could not import utils module. Make sure the --parent-dir argument is pointing to the package\'s many_small_jobs_directory.')
+        raise Exception('Could not import utils module. Make sure the --parent-dir argument is pointing to the package\'s embarrassingly_parallel directory.')
     sys.path.append(args.single_run_module_parent_dir)
     single_run_fn = getattr(importlib.import_module(args.single_run_module), args.single_run_fn)
     main(
@@ -104,4 +104,4 @@ if __name__=='__main__':
         job_array=args.job_array
     )
     t2 = time.time()
-    print('Total run time: {:.5f}'.format(t2 - t1))
+    print('Elapsed time for main computations: {:.5f}'.format(t2 - t1))

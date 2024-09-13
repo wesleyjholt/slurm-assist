@@ -71,11 +71,25 @@ def main(
 
 if __name__ == '__main__':
     import argparse
+    import time
+    import sys
+    import importlib
+
     parser = argparse.ArgumentParser(description='Split data into batches and save to files.')
+    parser.add_argument('--utils-parent-dir', type=str)
     parser.add_argument('--input-file', type=str, help='Path to the input data file.')
     parser.add_argument('--batched-data-dir', type=str, help='Directory to save the batched data.')
     parser.add_argument('--job-array', type=int, nargs='+', help='Array of job numbers.')
     parser.add_argument('--ntasks-per-job', type=int, default=1, help='Number of tasks per job.')
     parser.add_argument('--generate-new-ids', action='store_true', help='Generate new IDs for the data entries.')
-    args = parser.parse_args()
+    args, unknown_args = parser.parse_known_args()
+
+    t1 = time.time()
+    sys.path.append(args.utils_parent_dir)
+    try:
+        from utils import save_pickle
+    except:
+        raise Exception('Could not import utils module. Make sure the --parent-dir argument is pointing to the package\'s embarrassingly_parallel directory.')
     main(args.input_file, args.batched_data_dir, args.job_array, args.ntasks_per_job, args.generate_new_ids)
+    t2 = time.time()
+    print('Elapsed time for splitting data: {:.5f}'.format(t2 - t1))

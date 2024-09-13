@@ -18,7 +18,6 @@ from ..utils import (
     convert_slurm_keys,
     merge_dicts
 )
-from .split import main as split_data
 
 from .. import utils
 utils_parent_dir = os.path.dirname(os.path.abspath(utils.__file__))
@@ -257,6 +256,7 @@ class EmbarrassinglyParallelJobs(JobGroup):
             dict(
                 program=split_python_script,
                 program_args=dict(
+                    utils_parent_dir=utils_parent_dir,
                     input_file=self['input_data_file'],
                     batched_data_dir=self.batched_data_dir,
                     job_array=self.array_elements,

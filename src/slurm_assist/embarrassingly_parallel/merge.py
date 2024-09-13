@@ -73,4 +73,4 @@ if __name__=='__main__':
     )
     t2 = time.time()
     print('...done.')
-    print('Total elapsed time: {:.5f}'.format(t2 - t1))
+    print('Elapsed time for merging results: {:.5f}'.format(t2 - t1))
