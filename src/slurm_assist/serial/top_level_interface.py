@@ -72,7 +72,7 @@ class SerialJobsWithState(JobGroup):
     def submit_next(self):
         config_i, self.config_gen_state = self.config_gen_fns[self.i_submit](self._config, self.config_gen_state)
         job_group_i, self.config_gen_state = self.job_group_gen_fns[self.i_submit](config_i, self.config_gen_state)
-        dep, self.config_gen_state = self.dependency_gen_fns[self.i_submit - 1](self.last_job_ids, self.config_gen_state)
+        dep, self.config_gen_state = self.dependency_gen_fns[self.i_submit](self.last_job_ids, self.config_gen_state)
         # if self.i_submit > 0:
         #     dep, self.config_gen_state = self.dependency_gen_fns[self.i_submit - 1](self.last_job_ids, self.config_gen_state)
         # else:
