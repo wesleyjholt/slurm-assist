@@ -49,12 +49,12 @@ if __name__=='__main__':
     import sys
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--utils-parent-dir', type=str)
-    parser.add_argument('--batched-results-dir', type=str)
-    parser.add_argument('--merged-results-file', type=str)
-    parser.add_argument('--tmp-dir', type=str)
-    parser.add_argument('--job-array', type=str)
-    parser.add_argument('--ntasks-per-job', type=int)
+    parser.add_argument('--utils-parent-dir', '--utils_parent_dir', type=str)
+    parser.add_argument('--batched-results-dir', '--batched_results_dir', type=str)
+    parser.add_argument('--merged-results-file', '--merged_results_file', type=str)
+    parser.add_argument('--tmp-dir', '--tmp_dir', type=str)
+    parser.add_argument('--job-array', '--job_array', type=str)
+    parser.add_argument('--ntasks-per-job', '--ntasks_per_job', type=int)
     args = parser.parse_args()
 
     print('\nMerging results...')

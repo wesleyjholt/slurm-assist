@@ -59,27 +59,27 @@ kill -s INT $GPU_USAGE_PID $GPU_MEM_PID
 """
 main_script_template = Template(main_script_template_content)
 
-merge_script_template_content = \
-"""#!/bin/bash -l
+# merge_script_template_content = \
+# """#!/bin/bash -l
 
-#SBATCH --output={{ stdout_dir }}/slurm-%j.out
+# #SBATCH --output={{ stdout_dir }}/slurm-%j.out
 
-module purge
+# module purge
 
-# Set up CPU monitoring
-module load utilities monitor
-monitor cpu percent > {{ resource_monitoring_dir }}/cpu-percent-run-${SLURM_JOB_ID}.log &
-CPU_USAGE_PID=$!
-monitor cpu memory > {{ resource_monitoring_dir }}/cpu-memory-run-${SLURM_JOB_ID}.log &
-CPU_MEM_PID=$!
+# # Set up CPU monitoring
+# module load utilities monitor
+# monitor cpu percent > {{ resource_monitoring_dir }}/cpu-percent-run-${SLURM_JOB_ID}.log &
+# CPU_USAGE_PID=$!
+# monitor cpu memory > {{ resource_monitoring_dir }}/cpu-memory-run-${SLURM_JOB_ID}.log &
+# CPU_MEM_PID=$!
 
-# Run computations
-apptainer run {{ container_image }} {{ python_script }} {{ python_script_args }}
+# # Run computations
+# apptainer run {{ container_image }} {{ python_script }} {{ python_script_args }}
 
-# Shut down the resource monitors
-kill -s INT $CPU_USAGE_PID $CPU_MEM_PID
-"""
-merge_script_template = Template(merge_script_template_content)
+# # Shut down the resource monitors
+# kill -s INT $CPU_USAGE_PID $CPU_MEM_PID
+# """
+# merge_script_template = Template(merge_script_template_content)
 
 class EmbarrassinglyParallelJobs(JobGroup):
     def __init__(
@@ -114,7 +114,6 @@ class EmbarrassinglyParallelJobs(JobGroup):
         self.main_job_id = None
 
         self._default_split_merge_slurm_args = dict(
-            job_name='merge',
             time='00:10:00',
             mem='1G'
         )
@@ -161,13 +160,17 @@ class EmbarrassinglyParallelJobs(JobGroup):
 
     @property
     def split_slurm_args(self):
+        default = merge_dicts(
+            convert_slurm_keys(self._default_split_merge_slurm_args),
+            {'job-name': 'split'},
+        )
         if 'split_slurm_args' in self.keys():
             return merge_dicts(
-                convert_slurm_keys(self._default_split_merge_slurm_args),
+                default,
                 convert_slurm_keys(self['split_slurm_args'])
             )
         else:
-            return convert_slurm_keys(self._default_split_merge_slurm_args)
+            return default
 
     @property
     def main_slurm_args(self):
@@ -175,13 +178,17 @@ class EmbarrassinglyParallelJobs(JobGroup):
     
     @property
     def merge_slurm_args(self):
+        default = merge_dicts(
+            convert_slurm_keys(self._default_split_merge_slurm_args),
+            {'job-name': 'merge'},
+        )
         if 'merge_slurm_args' in self.keys():
             return merge_dicts(
-                convert_slurm_keys(self._default_split_merge_slurm_args),
+                default,
                 convert_slurm_keys(self['merge_slurm_args'])
             )
         else:
-            return convert_slurm_keys(self._default_split_merge_slurm_args)
+            return default
 
     @property
     def array_elements(self):
@@ -236,10 +243,14 @@ class EmbarrassinglyParallelJobs(JobGroup):
     def _write_job_script(self, job_script_str):
         return write_temp_file(job_script_str, dir=self.job_scripts_dir, prefix='submit_')
     
-    def setup(self):
+    def setup(self, clear_directories: Optional[bool] = True):
         # Main results directory
-        remove_and_make_dir(self['results_dir'])
-        remove_and_make_dir(self.tmp_dir)
+        if clear_directories:
+            remove_and_make_dir(self['results_dir'])
+            remove_and_make_dir(self.tmp_dir)
+        else:
+            os.makedirs(self['results_dir'], exist_ok=True)
+            os.makedirs(self.tmp_dir, exist_ok=True)
         os.makedirs(self.job_scripts_dir, exist_ok=True)
         os.makedirs(self.batched_data_dir, exist_ok=True)
         os.makedirs(self.batched_results_dir, exist_ok=True)
@@ -259,7 +270,7 @@ class EmbarrassinglyParallelJobs(JobGroup):
                     utils_parent_dir=utils_parent_dir,
                     input_file=self['input_data_file'],
                     batched_data_dir=self.batched_data_dir,
-                    job_array=self.array_elements,
+                    job_array=self['main_slurm_args']['array'],
                     ntasks_per_job=self['main_slurm_args']['ntasks'],
                     generate_new_ids=self['generate_new_ids']
                 ),
@@ -270,7 +281,8 @@ class EmbarrassinglyParallelJobs(JobGroup):
         )
         self.split_job_id = split_job.submit(
             dependency_ids=dependency_ids,
-            dependency_conditions=dependency_conditions
+            dependency_conditions=dependency_conditions,
+            clear_directories=False
         )[-1]  # Gets the last job ID (in this case, there is only one)
 
     def submit_main(
@@ -320,6 +332,7 @@ class EmbarrassinglyParallelJobs(JobGroup):
         self.merge_job_id = merge_job.submit(
             dependency_ids=[[self.main_job_id]] if dependency_ids is None else dependency_ids, 
             dependency_conditions=['afterok'] if dependency_conditions is None else dependency_conditions,
+            clear_directories=False
         )[-1]  # Gets the last job ID (in this case, there is only one)
 
     
@@ -327,6 +340,7 @@ class EmbarrassinglyParallelJobs(JobGroup):
         self, 
         dependency_ids: Optional[list[list[int]]] = None, 
         dependency_conditions: Optional[list[str]] = None,
+        clear_directories: Optional[bool] = True,
         verbose: Optional[bool] = True
     ) -> tuple[int]:
         """Submits the jobs. Returns ID of the last job(s) in the dependency chain."""
@@ -336,7 +350,19 @@ class EmbarrassinglyParallelJobs(JobGroup):
             print('| PARALLEL JOBS |')
             print(' ---------------')
         
-        self.setup()
+        self.setup(clear_directories=clear_directories)
+        # check if data_batched directory exists
+        if not os.path.exists(self.batched_data_dir):
+            raise ValueError(f"Batched data directory '{self.batched_data_dir}' does not exist.")
+        # # check if data_batched directory is empty
+        # if not os.listdir(self.batched_data_dir):
+        #     raise ValueError(f"Batched data directory '{self.batched_data_dir}' is empty.")
+
+        # TODO: I KNOW THE ISSUE! By default, submitting a JobSingle will clear the tmp directory, which
+        # removees the data_batched directory. Need to give the Jobs options to NOT clear the directories
+        # when submitting. Perhaps make clearing the directories it an explicit action the use has to take?
+        # Or make it so that the directories are only cleared if the user specifies a flag to do so? I lean
+        # towards the flag.
         
         if verbose:
             print()
@@ -365,13 +391,6 @@ class EmbarrassinglyParallelJobs(JobGroup):
             print('=========')
 
         self.submit_merge()
-
-        if verbose:
-            print(f"Diagnostics")
-            print(f"-----------")
-            print(f"Standard output/error files:    {os.path.abspath(self.stdout_dir)}/slurm-{self.merge_job_id}.out")
-            print(f"Resource monitoring directory:  {os.path.abspath(self.resource_monitoring_dir)}")
-            print()
 
         JobIds = namedtuple('JobIds', ['split', 'main', 'merge'])
         return JobIds(split=self.split_job_id, main=self.main_job_id, merge=self.merge_job_id)

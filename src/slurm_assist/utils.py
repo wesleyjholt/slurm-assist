@@ -4,7 +4,7 @@ import pickle
 import subprocess
 import tempfile
 from glob import glob
-from gitignore_parser import parse_gitignore
+# from gitignore_parser import parse_gitignore
 
 from typing import Union, Mapping, Optional
 ListLike = Union[list, tuple, set, range]
@@ -212,27 +212,27 @@ def estimate_total_time(num_runs, single_run_time, job_array_size, n_tasks_per_j
     seconds = total_time - hours*3600 - minutes*60
     print(f'{hours:.0f} hours, {minutes:.0f} minutes, {seconds:.0f} seconds')
 
-def get_relevant_files(dir='.', path_to_slurm_assist_ignore=None, ignore_patterns=[]):
-    """Obtains relevant files (i.e., to push to a remote cluster)."""
-    def get_only_files(files):
-        return [file for file in files if os.path.isfile(file)]
-    files = get_only_files(glob(os.path.join(dir, '**'), recursive=True))
+# def get_relevant_files(dir='.', path_to_slurm_assist_ignore=None, ignore_patterns=[]):
+#     """Obtains relevant files (i.e., to push to a remote cluster)."""
+#     def get_only_files(files):
+#         return [file for file in files if os.path.isfile(file)]
+#     files = get_only_files(glob(os.path.join(dir, '**'), recursive=True))
     
-    if path_to_slurm_assist_ignore is None:
-        path_to_slurm_assist_ignore = os.path.join(dir, '.slurm-assist-ignore')
-    if os.path.exists(path_to_slurm_assist_ignore):
-        ignore = parse_gitignore(path_to_slurm_assist_ignore)
-        files = [file for file in files if not ignore(file)]
+#     if path_to_slurm_assist_ignore is None:
+#         path_to_slurm_assist_ignore = os.path.join(dir, '.slurm-assist-ignore')
+#     if os.path.exists(path_to_slurm_assist_ignore):
+#         ignore = parse_gitignore(path_to_slurm_assist_ignore)
+#         files = [file for file in files if not ignore(file)]
     
-    # Remove files that match ignore_patterns
-    if len(ignore_patterns) > 0:
-        with tempfile.NamedTemporaryFile('w', dir=dir, prefix='.slurm-assist-ignore_') as f:
-            for pattern in ignore_patterns:
-                f.write(pattern+'\n')
-            ignore = parse_gitignore(f.name)
-            files = [file for file in files if not ignore(file)]
+#     # Remove files that match ignore_patterns
+#     if len(ignore_patterns) > 0:
+#         with tempfile.NamedTemporaryFile('w', dir=dir, prefix='.slurm-assist-ignore_') as f:
+#             for pattern in ignore_patterns:
+#                 f.write(pattern+'\n')
+#             ignore = parse_gitignore(f.name)
+#             files = [file for file in files if not ignore(file)]
     
-    return files
+#     return files
 
 def execute_and_print_cmd(cmd):
     # Execute the command using subprocess

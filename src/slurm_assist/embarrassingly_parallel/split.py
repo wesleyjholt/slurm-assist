@@ -28,8 +28,9 @@ def main(
     generate_new_ids: bool
 ):
     """Split data into batches and save to files."""
-    
-    num_jobs = len(job_array)
+
+    job_array_ = parse_slurm_array(job_array)
+    num_jobs = len(job_array_)
     
     # Import the data file
     data = load_csv(input_file)
@@ -60,8 +61,8 @@ def main(
     for k, batch in enumerate(data_batches):
         i = k // ntasks_per_job
         j = k % ntasks_per_job
-        data_batch_filepath = os.path.join(batched_data_dir, f'data_{job_array[i]}_{j}.pkl')
-        print(f'Saving data batch {job_array[i]}_{j} to {data_batch_filepath} ... ', end='')
+        data_batch_filepath = os.path.join(batched_data_dir, f'data_{job_array_[i]}_{j}.pkl')
+        print(f'Saving data batch {job_array_[i]}_{j} to {data_batch_filepath} ... ', end='')
         save_pickle(batch, data_batch_filepath)
         print('done.')
     
@@ -74,18 +75,25 @@ if __name__ == '__main__':
     import sys
 
     parser = argparse.ArgumentParser(description='Split data into batches and save to files.')
-    parser.add_argument('--utils-parent-dir', type=str)
-    parser.add_argument('--input-file', type=str, help='Path to the input data file.')
-    parser.add_argument('--batched-data-dir', type=str, help='Directory to save the batched data.')
-    parser.add_argument('--job-array', type=int, nargs='+', help='Array of job numbers.')
-    parser.add_argument('--ntasks-per-job', type=int, default=1, help='Number of tasks per job.')
-    parser.add_argument('--generate-new-ids', action='store_true', help='Generate new IDs for the data entries.')
+    parser.add_argument('--utils-parent-dir', '--utils_parent_dir', type=str)
+    parser.add_argument('--input-file', '--input_file', type=str, help='Path to the input data file.')
+    parser.add_argument('--batched-data-dir', '--batched_data_dir', type=str, help='Directory to save the batched data.')
+    parser.add_argument('--job-array', '--job_array', type=str, help='Array of job numbers.')
+    parser.add_argument('--ntasks-per-job', '--ntasks_per_job', type=int, default=1, help='Number of tasks per job.')
+    parser.add_argument('--generate-new-ids', '--generate_new_ids', action='store_true', help='Generate new IDs for the data entries.')
     args, unknown_args = parser.parse_known_args()
 
     t1 = time.time()
     sys.path.append(args.utils_parent_dir)
+    # Print path to utils parent directory
+    print('Path to utils parent directory:', args.utils_parent_dir)
+    # Print input file path
+    print('Input file path:', args.input_file)
+    # List contents of the utils parent directory
+    print('Contents of utils parent directory:')
+    print(os.listdir(args.utils_parent_dir))
     try:
-        from utils import load_csv, save_pickle
+        from utils import load_csv, save_pickle, parse_slurm_array
     except:
         raise Exception('Could not import utils module. Make sure the --parent-dir argument is pointing to the package\'s embarrassingly_parallel directory.')
     main(args.input_file, args.batched_data_dir, args.job_array, args.ntasks_per_job, args.generate_new_ids)

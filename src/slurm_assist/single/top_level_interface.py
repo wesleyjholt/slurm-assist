@@ -94,8 +94,11 @@ class SingleJob(JobGroup):
     def _write_job_script(self, job_script_str):
         return write_temp_file(job_script_str, dir=self.job_scripts_dir, prefix='submit_')
 
-    def setup(self):
-        remove_and_make_dir(self.tmp_dir)
+    def setup(self, clear_directories: Optional[bool] = True):
+        if clear_directories:
+            remove_and_make_dir(self.tmp_dir)
+        else:
+            os.makedirs(self.tmp_dir, exist_ok=True)
         os.makedirs(self.job_scripts_dir, exist_ok=True)
         os.makedirs(self.resource_monitoring_dir, exist_ok=True)
         os.makedirs(self.stdout_dir, exist_ok=True)
@@ -104,9 +107,10 @@ class SingleJob(JobGroup):
         self, 
         dependency_ids: Optional[list[list[int]]] = None, 
         dependency_conditions: Optional[list[str]] = None,
+        clear_directories: Optional[bool] = True,
         verbose: Optional[bool] = True
     ) -> tuple[int]:
-        self.setup()
+        self.setup(clear_directories=clear_directories)
         job_script_filename = self._write_job_script(self.job_script)
 
         if verbose:
