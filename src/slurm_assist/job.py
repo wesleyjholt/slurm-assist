@@ -1,4 +1,4 @@
-from .utils import load_yaml, merge_dicts, convert_slurm_keys
+from .utils import load_yaml, merge_dicts, convert_slurm_keys, cancel_slurm_job
 
 class JobGroup(dict):
     def __init__(self, config):
@@ -26,9 +26,13 @@ class JobGroup(dict):
                     raise ValueError("No valid configs found.")
                 _config = merge_dicts(*_configs)
             super().__init__(convert_slurm_keys(_config))
+        self.all_job_ids = []
     
     def submit(self):
         raise NotImplementedError('submit method is not implemented. Implement me!')
     
     def cancel(self):
-        raise NotImplementedError('cancel method is not implemented. Implement me!')
+        for job_id in self.all_job_ids:
+            cancel_slurm_job(job_id)
+    
+    

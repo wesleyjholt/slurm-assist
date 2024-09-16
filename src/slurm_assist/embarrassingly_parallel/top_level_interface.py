@@ -98,7 +98,7 @@ class EmbarrassinglyParallelJobs(JobGroup):
             f"--batched-data-dir {self.batched_data_dir}",
             f"--batched-results-dir {self.batched_results_dir}",
             f"--split-results-dir {self.split_results_dir}",
-            f"--job-array {self['main_slurm_args']['array']}",
+            f"--job-array {self.main_slurm_args['array']}",
             f"--utils-parent-dir {utils_parent_dir}"
         ]
         main_python_script_args = ' '.join([parse_field(arg) for arg in main_python_script_args])
@@ -117,6 +117,11 @@ class EmbarrassinglyParallelJobs(JobGroup):
             time='00:10:00',
             mem='1G'
         )
+
+    def add_suffix_to_job_name(self, slurm_args):
+        if self.suffix is not None:
+            slurm_args['job-name'] += f"_{self.suffix}"
+
 
         # # The "merge job"
         # merge_python_script_args = [
@@ -151,48 +156,57 @@ class EmbarrassinglyParallelJobs(JobGroup):
             raise ValueError(f"Input data file '{self['input_data_file']}' is not a file.")
             
     def _set_defaults(self):
-        if 'job-name' not in self['main_slurm_args']:
-            self['main_slurm_args']['job-name'] = 'main'
-        if 'job-name' not in self['merge_slurm_args']:
-            self['merge_slurm_args']['job-name'] = 'merge'
         if 'use_gpu' not in self:
             self['use_gpu'] = False
+    
+    @property
+    def suffix(self):
+        return self['job_name_suffix'] if 'job_name_suffix' in self.keys() else None
 
     @property
     def split_slurm_args(self):
-        default = merge_dicts(
+        slurm_args = merge_dicts(
             convert_slurm_keys(self._default_split_merge_slurm_args),
             {'job-name': 'split'},
         )
         if 'split_slurm_args' in self.keys():
-            return merge_dicts(
-                default,
+            slurm_args = merge_dicts(
+                slurm_args,
                 convert_slurm_keys(self['split_slurm_args'])
             )
-        else:
-            return default
+        self.add_suffix_to_job_name(slurm_args)
+        return slurm_args
 
     @property
     def main_slurm_args(self):
-        return convert_slurm_keys(self['main_slurm_args'])
+        slurm_args = merge_dicts(
+            {
+                'job-name': 'main',
+                'use_gpu': False
+            },
+            convert_slurm_keys(self['main_slurm_args'])
+        )
+        print(slurm_args)
+        self.add_suffix_to_job_name(slurm_args)
+        return slurm_args
     
     @property
     def merge_slurm_args(self):
-        default = merge_dicts(
+        slurm_args = merge_dicts(
             convert_slurm_keys(self._default_split_merge_slurm_args),
             {'job-name': 'merge'},
         )
         if 'merge_slurm_args' in self.keys():
-            return merge_dicts(
-                default,
+            slurm_args = merge_dicts(
+                slurm_args,
                 convert_slurm_keys(self['merge_slurm_args'])
             )
-        else:
-            return default
+        self.add_suffix_to_job_name(slurm_args)
+        return slurm_args
 
     @property
     def array_elements(self):
-        return parse_slurm_array(self['main_slurm_args']['array'])
+        return parse_slurm_array(self.main_slurm_args['array'])
 
     @property
     def array_size(self):
@@ -270,8 +284,8 @@ class EmbarrassinglyParallelJobs(JobGroup):
                     utils_parent_dir=utils_parent_dir,
                     input_file=self['input_data_file'],
                     batched_data_dir=self.batched_data_dir,
-                    job_array=self['main_slurm_args']['array'],
-                    ntasks_per_job=self['main_slurm_args']['ntasks'],
+                    job_array=self.main_slurm_args['array'],
+                    ntasks_per_job=self.main_slurm_args['ntasks'],
                     generate_new_ids=self['generate_new_ids']
                 ),
                 tmp=self.tmp_dir,
@@ -292,7 +306,7 @@ class EmbarrassinglyParallelJobs(JobGroup):
     ):
         job_script_filename = self._write_job_script(self.main_job_script)
         self.main_job_id = submit_slurm_job(
-            slurm_args=self['main_slurm_args'], 
+            slurm_args=self.main_slurm_args, 
             job_script_filename=job_script_filename, 
             dependency_ids=[[self.split_job_id]] if dependency_ids is None else dependency_ids, 
             dependency_conditions=['afterok'] if dependency_conditions is None else dependency_conditions,
@@ -321,8 +335,8 @@ class EmbarrassinglyParallelJobs(JobGroup):
                     batched_results_dir=self.batched_results_dir,
                     merged_results_file=self.merged_results_file,
                     tmp_dir=self.tmp_dir,
-                    job_array=self['main_slurm_args']['array'],
-                    ntasks_per_job=self['main_slurm_args']['ntasks']
+                    job_array=self.main_slurm_args['array'],
+                    ntasks_per_job=self.main_slurm_args['ntasks']
                 ),
                 tmp=self.tmp_dir,
                 container_image=self['container_image'],
@@ -415,5 +429,5 @@ class EmbarrassinglyParallelJobs(JobGroup):
             num_runs=num_runs,
             single_run_time=single_run_time,
             job_array_size=self.array_size,
-            n_tasks_per_job=self['main_slurm_args']['ntasks']
+            n_tasks_per_job=self.main_slurm_args['ntasks']
         )

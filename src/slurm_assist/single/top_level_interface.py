@@ -66,11 +66,14 @@ class SingleJob(JobGroup):
         self.job_id = None
     
     def check_config_is_valid(self):
-        check_has_keys(self, required_keys=['slurm_args', 'program', 'program_args', 'tmp', 'container_image'])
-        
+        check_has_keys(self, required_keys=['slurm_args', 'program', 'program_args', 'container_image'])
+    
     @property
     def tmp_dir(self):
-        return self['tmp']
+        if 'tmp' in self.keys():
+            return self['tmp']
+        else:
+            return 'tmp'
     
     @property
     def job_scripts_dir(self):

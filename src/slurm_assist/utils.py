@@ -174,6 +174,13 @@ def submit_slurm_job(
     job_id = int(output.stdout.split()[-1])
     return job_id
 
+def cancel_slurm_job(job_id: int, verbose: bool = True):
+    output = subprocess.run(['scancel', str(job_id)], capture_output=True, text=True)
+    if output.stderr != '':
+        print(output.stderr)
+    if verbose:
+        print(output.stdout)
+
 def format_dependencies_to_str(ids: list[list[int]], conditions: list[str]) -> str:
     # Check if the lengths of the ids and conditions match
     if len(ids) != len(conditions):
@@ -248,33 +255,33 @@ def execute_and_print_cmd(cmd):
     if error:
         print("Error:", error)
 
-def copy_dir_to_remote(user, host, destination_path, ssh_key_path=None, **kwargs):
-    files = get_relevant_files(**kwargs)
-    files = ' '.join(files)
+# def copy_dir_to_remote(user, host, destination_path, ssh_key_path=None, **kwargs):
+#     files = get_relevant_files(**kwargs)
+#     files = ' '.join(files)
 
-    # if generate_ssh_key_if_needed:
-    #     if ssh_key_path is None:
-    #         ssh_key_path = os.path.expanduser('~/.ssh/id_rsa')
-    #     if not os.path.exists(ssh_key_path):
-    #         print('Creating new ssh key...')
-    #         command = f"ssh-keygen -f {ssh_key_path} -P '' "
-    #         execute_and_print_cmd(command)
-    #         print('done.\n')
-    #         print('Adding ssh key to remote...')
-    #         command = f"ssh-copy-id -i {ssh_key_path}.pub {user}@{host}"
-    #         execute_and_print_cmd(command)
-    #         print('done.\n')
-    #     else:
-    #         print('ssh key already exists')
+#     # if generate_ssh_key_if_needed:
+#     #     if ssh_key_path is None:
+#     #         ssh_key_path = os.path.expanduser('~/.ssh/id_rsa')
+#     #     if not os.path.exists(ssh_key_path):
+#     #         print('Creating new ssh key...')
+#     #         command = f"ssh-keygen -f {ssh_key_path} -P '' "
+#     #         execute_and_print_cmd(command)
+#     #         print('done.\n')
+#     #         print('Adding ssh key to remote...')
+#     #         command = f"ssh-copy-id -i {ssh_key_path}.pub {user}@{host}"
+#     #         execute_and_print_cmd(command)
+#     #         print('done.\n')
+#     #     else:
+#     #         print('ssh key already exists')
     
-    # Construct the command
-    extra_key_arg = ''
-    if ssh_key_path is not None:
-        if os.path.exists(ssh_key_path):
-            extra_key_arg = f'-i {ssh_key_path}'
-    command = f"echo \"{files}\" | xargs tar cf - | ssh {extra_key_arg} {user}@{host} \"mkdir -p {destination_path} && tar xf - -C {destination_path}\" "
-    print(command)
-    execute_and_print_cmd(command)
+#     # Construct the command
+#     extra_key_arg = ''
+#     if ssh_key_path is not None:
+#         if os.path.exists(ssh_key_path):
+#             extra_key_arg = f'-i {ssh_key_path}'
+#     command = f"echo \"{files}\" | xargs tar cf - | ssh {extra_key_arg} {user}@{host} \"mkdir -p {destination_path} && tar xf - -C {destination_path}\" "
+#     print(command)
+#     execute_and_print_cmd(command)
 
     # TODO: Finish this (make it a job type). See the colha submit.sh for postprocess as an example
     # sbatch --dependency afterok:$jobid -A $ACCOUNT --array 1-$ARRAY_SIZE_MOVE --mem-per-cpu $MEM_PER_CPU_MOVE --ntasks 1 --time $WALLTIME_MOVE _move_results.sh $@
@@ -285,7 +292,7 @@ def _convert_keys(d):
 def convert_slurm_keys(d):
     """Convert all slurm args keys to use dashes instead of underscores."""
     for k, v in d.items():
-        if k.startswith('slurm_'):
+        if 'slurm_args' in k:
             d[k] = _convert_keys(v)
         elif isinstance(v, dict):
             convert_slurm_keys(v)

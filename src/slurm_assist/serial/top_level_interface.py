@@ -44,7 +44,7 @@ class SerialJobsWithState(JobGroup):
     def __init__(
         self,
         state: Any,
-        config: Config,
+        global_config: Config,
         job_group_gen_fns: Union[JobGroupGenFunc, list[JobGroupGenFunc]],
         config_gen_fns: Union[ConfigGenFunc, list[ConfigGenFunc]],
         dependency_gen_fns: Union[DependencyGenFunc, list[DependencyGenFunc]],
@@ -52,8 +52,8 @@ class SerialJobsWithState(JobGroup):
     ):
         if None in (job_group_gen_fns, config_gen_fns, dependency_gen_fns):
             raise ValueError("job_group_gen_fns, config_gen_fns, and dependency_gen_fns must all be specified.")
-        super().__init__(config)
-        self._config = config
+        super().__init__(global_config)
+        self.global_config = global_config
         self.i_submit = 0
         if not isinstance(job_group_gen_fns, ListLike):
             job_group_gen_fns = [job_group_gen_fns]
@@ -71,21 +71,26 @@ class SerialJobsWithState(JobGroup):
         self.last_job_ids = None
     
     def submit_next(self):
-        config_i, self.config_gen_state = self.config_gen_fns[self.i_submit](self._config, self.config_gen_state)
+        config_i, self.config_gen_state = self.config_gen_fns[self.i_submit](self.global_config, self.config_gen_state)
         job_group_i, self.config_gen_state = self.job_group_gen_fns[self.i_submit](config_i, self.config_gen_state)
-        print(self.i_submit)
-        print(self.last_job_ids)
-        print(self.config_gen_state)
-        print(self.dependency_gen_fns[self.i_submit])
-        print(self.dependency_gen_fns)
+        print('i_submit: ', self.i_submit)
+        # print('last_job_ids: ', self.last_job_ids)
+        # print('config_gen_state: ', self.config_gen_state)
+        # print('dependency_gen_fns[i_submit]', self.dependency_gen_fns[self.i_submit])
+        # print('dependency_gen_fns', self.dependency_gen_fns)
         dep, self.config_gen_state = self.dependency_gen_fns[self.i_submit](self.last_job_ids, self.config_gen_state)
         # if self.i_submit > 0:
         #     dep, self.config_gen_state = self.dependency_gen_fns[self.i_submit - 1](self.last_job_ids, self.config_gen_state)
         # else:
         #     dep = (None, None)
-        self.last_job_ids = job_group_i.submit(dependency_ids=dep[0], dependency_conditions=dep[1])
+        # print('dep: ', dep)
+        # print('self.config_gen_state: ', self.config_gen_state)
+        job_ids = job_group_i.submit(dependency_ids=dep[0], dependency_conditions=dep[1])
         self.job_groups.append(job_group_i)
         self.i_submit += 1
+        for id in job_ids:
+            self.all_job_ids.append(id)
+        self.last_job_ids = job_ids
 
     def submit(self):
         while self.i_submit < len(self.job_group_gen_fns):
@@ -103,10 +108,19 @@ class SerialJobs(SerialJobsWithState):
     ):
         if (first_job_dependency_ids is None) != (first_job_dependency_conditions is None):
             raise ValueError("first_job_dependency_ids and first_job_dependency_conditions must both specified or not. Cannot specify only one.")
-        job_group_gen_fns_with_state = [lambda *_: (job_group, None) for job_group in job_groups]
-        config_gen_fns_with_state = [lambda *_: (None, None) for j in job_groups]
+        def job_group_gen_fn_with_state(job_group, config, state):
+            return job_group, state
+        def config_gen_fn_with_state(config, global_config, state):
+            return config, state
+        def dependency_gen_fn_with_state(dependency_gen_fn_no_state, ids, state):
+            return dependency_gen_fn_no_state(ids), state
+        # job_group_gen_fns_with_state = [lambda *_: (job_group, None) for job_group in job_groups]
+        job_group_gen_fns_with_state = [partial(job_group_gen_fn_with_state, j) for j in job_groups]
+        # config_gen_fns_with_state = [lambda *_: (None, None) for j in job_groups]
+        config_gen_fns_with_state = [partial(config_gen_fn_with_state, None) for _ in job_groups]
+
         if first_job_dependency_ids is None:
-            _first_dependency_gen_fn = lambda _: (None, None)
+            _first_dependency_gen_fn = lambda _: (None, None)  # dependency ids, dependency conditions
         else:
             _first_dependency_gen_fn = lambda _: (first_job_dependency_ids, first_job_dependency_conditions)
         if not isinstance(dependency_gen_fns, ListLike):
@@ -115,12 +129,10 @@ class SerialJobs(SerialJobsWithState):
             dependency_gen_fns = [_first_dependency_gen_fn] + list(dependency_gen_fns)
         elif len(dependency_gen_fns) != len(job_groups):
             raise ValueError("Invalid number of dependency generator functions (dependency_gen_fns). Must be either 1, len(job_groups) - 1, or len(job_groups).")
-        def dependency_gen_fn_with_state(dependency_gen_fn_no_state, ids, state):
-            return dependency_gen_fn_no_state(ids), state
         dependency_gen_fns_with_state = [partial(dependency_gen_fn_with_state, d) for d in dependency_gen_fns]
         super().__init__(
             state=None,  # no state
-            config=None,  # no config
+            global_config=None,  # no global config
             job_group_gen_fns=job_group_gen_fns_with_state,
             config_gen_fns=config_gen_fns_with_state,
             dependency_gen_fns=dependency_gen_fns_with_state
