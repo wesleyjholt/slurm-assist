@@ -39,8 +39,8 @@ CPU_USAGE_PID=$!
 monitor cpu memory > {{ resource_monitoring_dir }}/cpu-memory-run-${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}.log &
 CPU_MEM_PID=$!
 
-# Set up GPU monitoring if requested
 {% if use_gpu %}
+# Set up GPU monitoring
 module load utilities monitor
 monitor gpu percent > {{ resource_monitoring_dir }}/gpu-percent-run-${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}.log &
 GPU_USAGE_PID=$!
@@ -58,28 +58,6 @@ kill -s INT $GPU_USAGE_PID $GPU_MEM_PID
 {% endif %}
 """
 main_script_template = Template(main_script_template_content)
-
-# merge_script_template_content = \
-# """#!/bin/bash -l
-
-# #SBATCH --output={{ stdout_dir }}/slurm-%j.out
-
-# module purge
-
-# # Set up CPU monitoring
-# module load utilities monitor
-# monitor cpu percent > {{ resource_monitoring_dir }}/cpu-percent-run-${SLURM_JOB_ID}.log &
-# CPU_USAGE_PID=$!
-# monitor cpu memory > {{ resource_monitoring_dir }}/cpu-memory-run-${SLURM_JOB_ID}.log &
-# CPU_MEM_PID=$!
-
-# # Run computations
-# apptainer run {{ container_image }} {{ python_script }} {{ python_script_args }}
-
-# # Shut down the resource monitors
-# kill -s INT $CPU_USAGE_PID $CPU_MEM_PID
-# """
-# merge_script_template = Template(merge_script_template_content)
 
 class EmbarrassinglyParallelJobs(JobGroup):
     def __init__(
@@ -121,26 +99,6 @@ class EmbarrassinglyParallelJobs(JobGroup):
     def add_suffix_to_job_name(self, slurm_args):
         if self.suffix is not None:
             slurm_args['job-name'] += f"_{self.suffix}"
-
-
-        # # The "merge job"
-        # merge_python_script_args = [
-        #     f"--batched-results-dir {self.batched_results_dir}",
-        #     f"--merged-results-file {self.merged_results_file}",
-        #     f"--tmp-dir {self.tmp_dir}",
-        #     f"--job-array {self['main_slurm_args']['array']}",
-        #     f"--ntasks-per-job {self['main_slurm_args']['ntasks']}",
-        #     f"--utils-parent-dir {utils_parent_dir}"
-        # ]
-        # merge_python_script_args = ' '.join([parse_field(arg) for arg in merge_python_script_args])
-        # self.merge_job_script = merge_script_template.render(dict(
-        #     container_image=self['container_image'],
-        #     python_script=merge_python_script,
-        #     python_script_args=merge_python_script_args,
-        #     stdout_dir=self.stdout_dir,
-        #     resource_monitoring_dir=self.resource_monitoring_dir
-        # ))
-        # self.merge_job_id = None
 
     def check_config_is_valid(self, container_test_cmds=['python3', '-c', 'import os']):
         check_has_keys(self, required_keys=['main_slurm_args', 'results_dir', 'input_data_file', 'container_image', 'mpi', 'generate_new_ids'])
@@ -186,7 +144,6 @@ class EmbarrassinglyParallelJobs(JobGroup):
             },
             convert_slurm_keys(self['main_slurm_args'])
         )
-        print(slurm_args)
         self.add_suffix_to_job_name(slurm_args)
         return slurm_args
     
@@ -311,16 +268,6 @@ class EmbarrassinglyParallelJobs(JobGroup):
             dependency_ids=[[self.split_job_id]] if dependency_ids is None else dependency_ids, 
             dependency_conditions=['afterok'] if dependency_conditions is None else dependency_conditions,
         )
-    
-    # def submit_merge(self, **kwargs):
-    #     job_script_filename = self._write_job_script(self.merge_job_script)
-    #     self.merge_job_id = submit_slurm_job(
-    #         slurm_args=self['merge_slurm_args'], 
-    #         job_script_filename=job_script_filename, 
-    #         dependency_ids=[[self.main_job_id]], 
-    #         dependency_conditions=['afterok'],
-    #         **kwargs
-    #     )
 
     def submit_merge(
         self,
@@ -365,18 +312,8 @@ class EmbarrassinglyParallelJobs(JobGroup):
             print(' ---------------')
         
         self.setup(clear_directories=clear_directories)
-        # check if data_batched directory exists
         if not os.path.exists(self.batched_data_dir):
             raise ValueError(f"Batched data directory '{self.batched_data_dir}' does not exist.")
-        # # check if data_batched directory is empty
-        # if not os.listdir(self.batched_data_dir):
-        #     raise ValueError(f"Batched data directory '{self.batched_data_dir}' is empty.")
-
-        # TODO: I KNOW THE ISSUE! By default, submitting a JobSingle will clear the tmp directory, which
-        # removees the data_batched directory. Need to give the Jobs options to NOT clear the directories
-        # when submitting. Perhaps make clearing the directories it an explicit action the use has to take?
-        # Or make it so that the directories are only cleared if the user specifies a flag to do so? I lean
-        # towards the flag.
         
         if verbose:
             print()

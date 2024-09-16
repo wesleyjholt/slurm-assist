@@ -73,18 +73,7 @@ class SerialJobsWithState(JobGroup):
     def submit_next(self):
         config_i, self.config_gen_state = self.config_gen_fns[self.i_submit](self.global_config, self.config_gen_state)
         job_group_i, self.config_gen_state = self.job_group_gen_fns[self.i_submit](config_i, self.config_gen_state)
-        print('i_submit: ', self.i_submit)
-        # print('last_job_ids: ', self.last_job_ids)
-        # print('config_gen_state: ', self.config_gen_state)
-        # print('dependency_gen_fns[i_submit]', self.dependency_gen_fns[self.i_submit])
-        # print('dependency_gen_fns', self.dependency_gen_fns)
         dep, self.config_gen_state = self.dependency_gen_fns[self.i_submit](self.last_job_ids, self.config_gen_state)
-        # if self.i_submit > 0:
-        #     dep, self.config_gen_state = self.dependency_gen_fns[self.i_submit - 1](self.last_job_ids, self.config_gen_state)
-        # else:
-        #     dep = (None, None)
-        # print('dep: ', dep)
-        # print('self.config_gen_state: ', self.config_gen_state)
         job_ids = job_group_i.submit(dependency_ids=dep[0], dependency_conditions=dep[1])
         self.job_groups.append(job_group_i)
         self.i_submit += 1
@@ -114,9 +103,7 @@ class SerialJobs(SerialJobsWithState):
             return config, state
         def dependency_gen_fn_with_state(dependency_gen_fn_no_state, ids, state):
             return dependency_gen_fn_no_state(ids), state
-        # job_group_gen_fns_with_state = [lambda *_: (job_group, None) for job_group in job_groups]
         job_group_gen_fns_with_state = [partial(job_group_gen_fn_with_state, j) for j in job_groups]
-        # config_gen_fns_with_state = [lambda *_: (None, None) for j in job_groups]
         config_gen_fns_with_state = [partial(config_gen_fn_with_state, None) for _ in job_groups]
 
         if first_job_dependency_ids is None:

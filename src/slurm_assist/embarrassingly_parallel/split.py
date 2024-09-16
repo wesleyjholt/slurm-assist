@@ -19,6 +19,7 @@ DESCRIPTION:
 """
 
 import os
+import pandas as pd
 
 def main(
     input_file: str,
@@ -33,7 +34,8 @@ def main(
     num_jobs = len(job_array_)
     
     # Import the data file
-    data = load_csv(input_file)
+    # data = load_csv(input_file)
+    data = pd.read_csv(input_file).values.tolist()
     
     # Give each data entry a unique ID
     if generate_new_ids:

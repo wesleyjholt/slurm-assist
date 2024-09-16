@@ -7,6 +7,7 @@ DESCRIPTION:
 """
 
 import os
+import pandas as pd
 import subprocess
 from typing import *
 
@@ -37,7 +38,8 @@ def main(
             print(f'Failed to load {results_batch_file}')
     
     # Save results to a single file
-    save_csv(results, merged_results_file)
+    # save_csv(results, merged_results_file)
+    pd.DataFrame(results).to_csv(merged_results_file, index=False, header=False)
 
     # Delete tmp files
     subprocess.run(['rm', '-rf', tmp_dir])
