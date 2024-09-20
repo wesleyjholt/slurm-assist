@@ -13,7 +13,8 @@ def main(
     batched_data_dir: str,
     batched_results_dir: str,
     split_results_dir: str,
-    job_array: str
+    job_array: str,
+    **kwargs
 ):
     """Main entry point.
 
@@ -33,7 +34,7 @@ def main(
         ids, data_batch = list(zip(*ids_and_data_batch))  # unzip
 
         # Run the batch through processing
-        result = _run_batch(single_run_fn, ids, data_batch, split_results_dir)
+        result = _run_batch(single_run_fn, ids, data_batch, split_results_dir, **kwargs)
     
     # Save results
     results_batch_filepath = os.path.join(batched_results_dir, f'results_{job_array_[array_id_]}_{batch_id}.pkl')
@@ -43,7 +44,8 @@ def _run_batch(
     single_run_fn: Callable[[int, list[str], str], list[str]],
     run_ids: int,
     data_batch: list,
-    split_results_dir: str
+    split_results_dir: str,
+    **kwargs
 ):
     """Run a batch of data through user-defined processing.
 
@@ -65,7 +67,7 @@ def _run_batch(
     """
     results = []
     for id, data in zip(run_ids, data_batch):
-        results.append(single_run_fn(id, data, split_results_dir))
+        results.append(single_run_fn(id, data, split_results_dir, **kwargs))
     return results
 
 
@@ -90,9 +92,10 @@ if __name__=='__main__':
     t1 = time.time()
     sys.path.append(args.utils_parent_dir)
     try:
-        from utils import load_pickle, save_pickle, parse_slurm_array, to_zero_based_indexing
+        from utils import load_pickle, save_pickle, parse_slurm_array, to_zero_based_indexing, parse_cli_args
     except:
         raise Exception('Could not import utils module. Make sure the --parent-dir argument is pointing to the package\'s embarrassingly_parallel directory.')
+    unknown_args_dict = parse_cli_args(unknown_args)
     sys.path.append(args.single_run_module_parent_dir)
     single_run_fn = getattr(importlib.import_module(args.single_run_module), args.single_run_fn)
     main(
@@ -101,7 +104,8 @@ if __name__=='__main__':
         batched_data_dir=args.batched_data_dir,
         batched_results_dir=args.batched_results_dir,
         split_results_dir=args.split_results_dir,
-        job_array=args.job_array
+        job_array=args.job_array,
+        **unknown_args_dict
     )
     t2 = time.time()
     print('Elapsed time for main computations: {:.5f}'.format(t2 - t1))

@@ -77,8 +77,11 @@ class EmbarrassinglyParallelJobs(JobGroup):
             f"--batched-results-dir {self.batched_results_dir}",
             f"--split-results-dir {self.split_results_dir}",
             f"--job-array {self.main_slurm_args['array']}",
-            f"--utils-parent-dir {utils_parent_dir}"
+            f"--utils-parent-dir {utils_parent_dir}",
+            " "
         ]
+        if '_main_python_script_extra_args' in self.keys():
+            main_python_script_args += [self['_main_python_script_extra_args']]
         main_python_script_args = ' '.join([parse_field(arg) for arg in main_python_script_args])
         self.main_job_script = main_script_template.render(dict(
             container_image=self['container_image'],

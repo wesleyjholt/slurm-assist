@@ -94,6 +94,21 @@ def parse_slurm_array(slurm_array):
     
     return job_list
 
+def parse_cli_args(args):
+    # Initialize a dictionary to store named arguments
+    arg_dict = {}
+
+    # Process the unknown arguments list
+    for i in range(0, len(args), 2):
+        if args[i].startswith('--'):
+            # Strip the leading `--` from the argument name and replace hyphens with underscores
+            arg_name = args[i][2:].replace('-', '_')
+            # Assign the value that follows it in the argument list
+            arg_value = args[i+1] if i+1 < len(args) else None
+            arg_dict[arg_name] = arg_value
+            
+    return arg_dict
+
 def to_zero_based_indexing(ind: Union[int, list]):
     if isinstance(ind, int):
         return ind - 1

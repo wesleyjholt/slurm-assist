@@ -1,2 +1,3 @@
 results_dir: test_embarrassingly_parallel/results
 tmp_dir: test_embarrassingly_parallel/tmp
+_main_python_script_extra_args: "--extra-arg-1 hello --extra-arg-2 world"
