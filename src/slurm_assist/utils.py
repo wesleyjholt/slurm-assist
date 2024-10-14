@@ -67,6 +67,29 @@ def check_has_keys(d, required_keys):
         if k not in d:
             raise ValueError(f"Missing required field: {k}")
 
+def parse_config(config):
+    if config is not None:
+        if isinstance(config, str):
+            # Single file
+            _config = load_yaml(config)
+        elif isinstance(config, dict):
+            # Single dictionary
+            _config = config
+        else:
+            # List of files, dictionaries, or None values
+            _configs = []
+            for c in config:
+                if isinstance(c, str):
+                    _configs.append(load_yaml(c))
+                elif isinstance(c, dict):
+                    _configs.append(c)
+                elif c is not None:
+                    raise ValueError(f"Invalid config: {c}")
+            if len(_configs) == 0:
+                raise ValueError("No valid configs found.")
+            _config = merge_dicts(*_configs)
+        return convert_slurm_keys(_config)
+
 def parse_field(field):
     if isinstance(field, ListLike):
         field = [parse_field(f) for f in field]
@@ -269,6 +292,82 @@ def execute_and_print_cmd(cmd):
         print("Output:", output)
     if error:
         print("Error:", error)
+
+
+def compress_and_transfer(hostname, username, key_filename, local_paths, remote_dir, archive_name=None):
+    # Use tempfile to create an archive name, if not provided
+    if archive_name is None:
+        tmp_basename = os.path.relpath(tempfile.NamedTemporaryFile(dir='.').name, '.')
+        archive_name = tmp_basename + '.tar.gz'
+    
+    # Expand paths
+    key_filename = os.path.expanduser(key_filename)
+    
+    # Create the tar command for the list of files
+    compress_command = ["tar", "-czf", archive_name] + local_paths
+    
+    try:
+        # Step 1: Compress the files into a tar.gz archive
+        print(f"Compressing files into {archive_name}...")
+        subprocess.run(compress_command, check=True)
+        print(f"Compression successful: {archive_name}")
+
+        # Step 2: Create the remote directory if it does not exist
+        ssh_mkdir_command = f"mkdir -p {remote_dir}"
+        ssh_mkdir = [
+            "ssh",
+            "-i", key_filename,
+            f"{username}@{hostname}",
+            ssh_mkdir_command
+        ]
+        print(f"Creating remote directory {remote_dir}...")
+        subprocess.run(ssh_mkdir, check=True)
+        print(f"Remote directory created: {remote_dir}")
+
+        # Step 3: Transfer the compressed file to the remote server using scp
+        scp_command = [
+            "scp",
+            "-i", key_filename,  # Path to SSH private key
+            archive_name,        # Local compressed file
+            f"{username}@{hostname}:{remote_dir}"  # Remote destination (user@host:/remote/path)
+        ]
+        print(f"Transferring {archive_name} to {remote_dir} on {hostname}...")
+        subprocess.run(scp_command, check=True)
+        print(f"Transfer successful.")
+
+        # Step 4: Connect to the remote server to uncompress the archive
+        uncompress_command = f"tar -xzf {remote_dir}/{archive_name} -C {remote_dir}"
+        ssh_command = [
+            "ssh",
+            "-i", key_filename,  # Path to SSH private key
+            f"{username}@{hostname}",  # Remote user and host
+            uncompress_command  # Command to uncompress the file on remote server
+        ]
+        print(f"Uncompressing {archive_name} on remote server...")
+        subprocess.run(ssh_command, check=True)
+        print(f"Uncompression successful on {hostname}.")
+
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+    finally:
+        # Optionally, you can delete the local archive after transfer if no longer needed
+        if os.path.exists(archive_name):
+            os.remove(archive_name)
+            print(f"Removed local archive {archive_name}.")
+        # Delete the remote archive after uncompression
+        ssh_delete_command = f"rm {remote_dir}/{archive_name}"
+        ssh_delete = [
+            "ssh",
+            "-i", key_filename,
+            f"{username}@{hostname}",
+            ssh_delete_command
+        ]
+        print(f"Deleting remote archive {archive_name}...")
+        subprocess.run(ssh_delete, check=True)
+        print(f"Deleted remote archive {archive_name}.")
+    
+    remote_paths = [os.path.join(remote_dir, p) for p in local_paths]
+    return remote_paths
 
 # def copy_dir_to_remote(user, host, destination_path, ssh_key_path=None, **kwargs):
 #     files = get_relevant_files(**kwargs)

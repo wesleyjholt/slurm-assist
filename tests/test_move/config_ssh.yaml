@@ -1,0 +1,4 @@
+hostname: gilbreth.rcac.purdue.edu
+username: holtw
+key_filename: ~/.ssh/id_rsa
+remote_dir: /scratch/holtw/test_move

@@ -1,6 +1,8 @@
-import subprocess
-import os
-import tempfile
+# import subprocess
+# import os
+# import tempfile
+
+from slurm_assist.utils import compress_and_transfer
 
 def single_run(
     id: int,
@@ -20,93 +22,27 @@ def single_run(
 
     return remote_path
 
+# if __name__ == '__main__':
+#     import argparse
+#     import time
+#     import sys
 
-def compress_and_transfer(hostname, username, key_filename, local_paths, remote_dir, archive_name=None):
-    # Use tempfile to create an archive name, if not provided
-    if archive_name is None:
-        tmp_basename = os.path.relpath(tempfile.NamedTemporaryFile(dir='.').name, '.')
-        archive_name = tmp_basename + '.tar.gz'
-    
-    # Expand paths
-    key_filename = os.path.expanduser(key_filename)
-    
-    # Create the tar command for the list of files
-    compress_command = ["tar", "-czf", archive_name] + local_paths
-    
-    try:
-        # Step 1: Compress the files into a tar.gz archive
-        print(f"Compressing files into {archive_name}...")
-        subprocess.run(compress_command, check=True)
-        print(f"Compression successful: {archive_name}")
+#     parser = argparse.ArgumentParser(description='Move data from one machine to another via an ssh connection.')
+#     parser.add_argument('--hostname', type=str)
+#     parser.add_argument('--username', type=str, help='Path to the input data file.')
+#     parser.add_argument('--key_filename', type=str, help='Directory to save the batched data.')
+#     parser.add_argument('--remote_dir', type=str, help='Array of job numbers.')
+#     args, unknown_args = parser.parse_known_args()
 
-        # Step 2: Create the remote directory if it does not exist
-        ssh_mkdir_command = f"mkdir -p {remote_dir}"
-        ssh_mkdir = [
-            "ssh",
-            "-i", key_filename,
-            f"{username}@{hostname}",
-            ssh_mkdir_command
-        ]
-        print(f"Creating remote directory {remote_dir}...")
-        subprocess.run(ssh_mkdir, check=True)
-        print(f"Remote directory created: {remote_dir}")
-
-        # Step 3: Transfer the compressed file to the remote server using scp
-        scp_command = [
-            "scp",
-            "-i", key_filename,  # Path to SSH private key
-            archive_name,        # Local compressed file
-            f"{username}@{hostname}:{remote_dir}"  # Remote destination (user@host:/remote/path)
-        ]
-        print(f"Transferring {archive_name} to {remote_dir} on {hostname}...")
-        subprocess.run(scp_command, check=True)
-        print(f"Transfer successful.")
-
-        # Step 4: Connect to the remote server to uncompress the archive
-        uncompress_command = f"tar -xzf {remote_dir}/{archive_name} -C {remote_dir}"
-        ssh_command = [
-            "ssh",
-            "-i", key_filename,  # Path to SSH private key
-            f"{username}@{hostname}",  # Remote user and host
-            uncompress_command  # Command to uncompress the file on remote server
-        ]
-        print(f"Uncompressing {archive_name} on remote server...")
-        subprocess.run(ssh_command, check=True)
-        print(f"Uncompression successful on {hostname}.")
-
-    except subprocess.CalledProcessError as e:
-        print(f"Error: {e}")
-    finally:
-        # Optionally, you can delete the local archive after transfer if no longer needed
-        if os.path.exists(archive_name):
-            os.remove(archive_name)
-            print(f"Removed local archive {archive_name}.")
-        # Delete the remote archive after uncompression
-        ssh_delete_command = f"rm {remote_dir}/{archive_name}"
-        ssh_delete = [
-            "ssh",
-            "-i", key_filename,
-            f"{username}@{hostname}",
-            ssh_delete_command
-        ]
-        print(f"Deleting remote archive {archive_name}...")
-        subprocess.run(ssh_delete, check=True)
-        print(f"Deleted remote archive {archive_name}.")
-    
-    remote_paths = [os.path.join(remote_dir, p) for p in local_paths]
-    return remote_paths
-
-
-# Example usage
-if __name__ == "__main__":
-    hostname = "your_remote_host"      # Replace with your remote host address
-    username = "your_username"         # Replace with your SSH username
-    key_filename = "~/.ssh/id_rsa"     # Path to your SSH private key (e.g., ~/.ssh/id_rsa)
-    local_files = ["/path/to/file1", "/path/to/file2", "/path/to/file3"]  # List of files to compress
-    remote_dir = "/path/to/remote_dir" # Replace with the remote directory path
-    
-    compress_and_transfer(hostname, username, key_filename, local_files, remote_dir)
-
+#     t1 = time.time()
+#     sys.path.append(args.utils_parent_dir)
+#     try:
+#         from utils import compress_and_transfer
+#     except:
+#         raise Exception('Could not import utils module. Make sure the --parent-dir argument is pointing to the package\'s embarrassingly_parallel directory.')
+#     main(args.hostname, args.username, args.job_array, args.ntasks_per_job, args.generate_new_ids)
+#     t2 = time.time()
+#     print('Elapsed time for splitting data: {:.5f}'.format(t2 - t1))
 
 
 

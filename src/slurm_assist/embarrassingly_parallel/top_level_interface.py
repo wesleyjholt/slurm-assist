@@ -65,6 +65,7 @@ class EmbarrassinglyParallelJobs(JobGroup):
         config: Union[str, dict, list[Union[str, dict, None]]]
     ):
         super().__init__(config)
+        print('======', self.keys())
         self._set_defaults()
         self.check_config_is_valid()
 
@@ -78,10 +79,13 @@ class EmbarrassinglyParallelJobs(JobGroup):
             f"--split-results-dir {self.split_results_dir}",
             f"--job-array {self.main_slurm_args['array']}",
             f"--utils-parent-dir {utils_parent_dir}",
-            " "
         ]
         if '_main_python_script_extra_args' in self.keys():
-            main_python_script_args += [self['_main_python_script_extra_args']]
+            if isinstance(self['_main_python_script_extra_args'], dict):
+                for k, v in self['_main_python_script_extra_args'].items():
+                    main_python_script_args += [f"--{k} {v}"]
+            else:
+                raise ValueError(f"Expected '_main_python_script_extra_args' to be a dictionary, but got {type(self['_main_python_script_extra_args'])}.")
         main_python_script_args = ' '.join([parse_field(arg) for arg in main_python_script_args])
         self.main_job_script = main_script_template.render(dict(
             container_image=self['container_image'],
@@ -295,7 +299,7 @@ class EmbarrassinglyParallelJobs(JobGroup):
         )
         self.merge_job_id = merge_job.submit(
             dependency_ids=[[self.main_job_id]] if dependency_ids is None else dependency_ids, 
-            dependency_conditions=['afterok'] if dependency_conditions is None else dependency_conditions,
+            dependency_conditions=['afterany'] if dependency_conditions is None else dependency_conditions,
             clear_directories=False
         )[-1]  # Gets the last job ID (in this case, there is only one)
 
