@@ -28,7 +28,8 @@ dependencies = [
   "pyyaml",
   "gitignore_parser",
   "pandas",
-  "fabric"
+  "fabric",
+  "mpi"
 ]
 
 [tool.hatch.metadata]
@@ -47,6 +48,14 @@ mpi = [
 test = [
   "pandas",
   "mpi4py"
+]
+docs = [
+  "sphinx",
+  "sphinx-rtd-theme",
+  "sphinx-autodoc-typehints",
+  "sphinx-autodoc-annotation",
+  "sphinx-autodoc-annotation",
+  "sphinx-autodoc-typehints"
 ]
 
 [project.urls]
