@@ -48,6 +48,7 @@ kill -s INT $GPU_USAGE_PID $GPU_MEM_PID
 script_template = Template(script_template_content)
 
 class SingleJob(JobGroup):
+    """A class for submitting a single job to a SLURM cluster."""
     def __init__(
         self,
         config: Union[str, dict, list[Union[str, dict, None]]]
