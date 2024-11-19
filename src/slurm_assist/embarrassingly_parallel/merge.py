@@ -16,7 +16,7 @@ def main(
     merged_results_file: str,
     tmp_dir: str,
     job_array: int,
-    ntasks_per_job: int
+    ntasks_per_job: int = None
 ):
     """Collect/merge the results."""
     job_array_ = parse_slurm_array(job_array)
@@ -24,18 +24,30 @@ def main(
     # Collect results for each batch of computation and append to a single list.
     num_jobs = len(job_array_)
     results = []
-    for k in range(num_jobs*ntasks_per_job):
-        i = k // ntasks_per_job
-        j = k % ntasks_per_job
-        results_batch_file = os.path.join(batched_results_dir, f'results_{job_array_[i]}_{j}.pkl')
-        try:
-            res_ij = load_pickle(results_batch_file)
-            for res_ijl in res_ij:
-                results.append(res_ijl)
-            print(f'Loaded {results_batch_file}')
-            
-        except:
-            print(f'Failed to load {results_batch_file}')
+    if ntasks_per_job is None:
+        for i in range(num_jobs):
+            results_batch_file = os.path.join(batched_results_dir, f'results_{job_array_[i]}.pkl')
+            try:
+                res_i = load_pickle(results_batch_file)
+                for res_il in res_i:
+                    results.append(res_il)
+                print(f'Loaded {results_batch_file}')
+                
+            except:
+                print(f'Failed to load {results_batch_file}')
+
+        for k in range(num_jobs*ntasks_per_job):
+            i = k // ntasks_per_job
+            j = k % ntasks_per_job
+            results_batch_file = os.path.join(batched_results_dir, f'results_{job_array_[i]}_{j}.pkl')
+            try:
+                res_ij = load_pickle(results_batch_file)
+                for res_ijl in res_ij:
+                    results.append(res_ijl)
+                print(f'Loaded {results_batch_file}')
+                
+            except:
+                print(f'Failed to load {results_batch_file}')
     
     # Save results to a single file
     # save_csv(results, merged_results_file)

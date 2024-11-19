@@ -4,8 +4,7 @@ PURPOSE: Run a batches data through user-defined processing.
 """
 
 import os
-from typing import Callable
-from mpi4py import MPI
+from typing import Callable, Optional
 
 def main(
     array_id: int, 
@@ -14,18 +13,24 @@ def main(
     batched_results_dir: str,
     split_results_dir: str,
     job_array: str,
+    ntasks_per_job: Optional[int] = None,
     **kwargs
 ):
     """Main entry point.
 
     Note that array_id is the job array task ID, not the SLURM job ID.
     """
-    batch_id = MPI.COMM_WORLD.rank
+    if ntasks_per_job is not None:
+        from mpi4py import MPI
+        batch_id = MPI.COMM_WORLD.rank
     job_array_ = parse_slurm_array(job_array)
     array_id_ = to_zero_based_indexing(array_id)
 
     # Load data batch
-    data_batch_filepath = os.path.join(batched_data_dir, f'data_{job_array_[array_id_]}_{batch_id}.pkl')
+    if ntasks_per_job is None:
+        data_batch_filepath = os.path.join(batched_data_dir, f'data_{job_array_[array_id_]}.pkl')
+    else:
+        data_batch_filepath = os.path.join(batched_data_dir, f'data_{job_array_[array_id_]}_{batch_id}.pkl')
     ids_and_data_batch = load_pickle(data_batch_filepath)
     if len(ids_and_data_batch) == 0:
         result = []
@@ -37,7 +42,10 @@ def main(
         result = _run_batch(single_run_fn, ids, data_batch, split_results_dir, **kwargs)
     
     # Save results
-    results_batch_filepath = os.path.join(batched_results_dir, f'results_{job_array_[array_id_]}_{batch_id}.pkl')
+    if ntasks_per_job is None:
+        results_batch_filepath = os.path.join(batched_results_dir, f'results_{job_array_[array_id_]}.pkl')
+    else:
+        results_batch_filepath = os.path.join(batched_results_dir, f'results_{job_array_[array_id_]}_{batch_id}.pkl')
     save_pickle(list(zip(ids, result)), results_batch_filepath)
 
 def _run_batch(

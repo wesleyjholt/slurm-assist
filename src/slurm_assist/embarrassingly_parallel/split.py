@@ -25,7 +25,7 @@ def main(
     input_file: str,
     batched_data_dir: str,
     job_array: list[int],
-    ntasks_per_job: int,
+    ntasks_per_job: int | None,
     generate_new_ids: bool
 ):
     """Split data into batches and save to files."""
@@ -55,18 +55,27 @@ def main(
     def _split_list(a: list, n: int) -> list[tuple[int, list]]:
         k, m = divmod(len(a), n)
         return [a[i*k+min(i, m):(i+1)*k+min(i+1, m)] for i in range(n)]
-    
-    # Split data into batches (1 batch per cpu in the job array)
-    data_batches = _split_list(data, num_jobs*ntasks_per_job)  # [[(id, data), ...], ...]
 
-    # Save each data batch to a file
-    for k, batch in enumerate(data_batches):
-        i = k // ntasks_per_job
-        j = k % ntasks_per_job
-        data_batch_filepath = os.path.join(batched_data_dir, f'data_{job_array_[i]}_{j}.pkl')
-        print(f'Saving data batch {job_array_[i]}_{j} to {data_batch_filepath} ... ', end='')
-        save_pickle(batch, data_batch_filepath)
-        print('done.')
+    if ntasks_per_job is None:
+        data_batches = _split_list(data, num_jobs)
+        for i, batch in enumerate(data_batches):
+            data_batch_filepath = os.path.join(batched_data_dir, f'data_{job_array_[i]}.pkl')
+            print(f'Saving data batch {job_array_[i]} to {data_batch_filepath} ... ', end='')
+            save_pickle(batch, data_batch_filepath)
+            print('done.')
+    
+    else:
+        # Split data into batches (1 batch per cpu in the job array)
+        data_batches = _split_list(data, num_jobs*ntasks_per_job)  # [[(id, data), ...], ...]
+
+        # Save each data batch to a file
+        for k, batch in enumerate(data_batches):
+            i = k // ntasks_per_job
+            j = k % ntasks_per_job
+            data_batch_filepath = os.path.join(batched_data_dir, f'data_{job_array_[i]}_{j}.pkl')
+            print(f'Saving data batch {job_array_[i]}_{j} to {data_batch_filepath} ... ', end='')
+            save_pickle(batch, data_batch_filepath)
+            print('done.')
     
     # Return the number of data batches
     return len(data_batches)

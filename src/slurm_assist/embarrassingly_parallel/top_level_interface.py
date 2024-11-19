@@ -369,9 +369,10 @@ class EmbarrassinglyParallelJobs(JobGroup):
             180  # time per run (in seconds)
         )
         """
+        n_tasks_per_job = self.main_slurm_args['ntasks'] if self.main_slurm_args['ntasks'] is not None else 1
         estimate_total_time(
             num_runs=num_runs,
             single_run_time=single_run_time,
             job_array_size=self.array_size,
-            n_tasks_per_job=self.main_slurm_args['ntasks']
+            n_tasks_per_job=n_tasks_per_job
         )

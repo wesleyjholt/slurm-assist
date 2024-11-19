@@ -1,0 +1,15 @@
+input_data_file: test_embarrassingly_parallel/data.txt
+single_run_module_parent_dir: ./test_embarrassingly_parallel
+single_run_module: single_run
+single_run_function: single_run
+container_image: mpi.sif
+mpi: pmi2
+generate_new_ids: true
+main_slurm_args: 
+  array: 1-4
+  time: 00:20:00
+  mem-per-cpu: 1024M
+  ntasks: null
+  account: standby
+merge_slurm_args:
+  time: 00:20:00
