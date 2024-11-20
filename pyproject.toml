@@ -28,8 +28,7 @@ dependencies = [
   "pyyaml",
   "gitignore_parser",
   "pandas",
-  "fabric",
-  "mpi4py"
+  "fabric"
 ]
 
 [tool.hatch.metadata]
