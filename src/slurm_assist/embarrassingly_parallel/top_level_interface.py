@@ -78,6 +78,7 @@ class EmbarrassinglyParallelJobs(JobGroup):
             f"--batched-results-dir {self.batched_results_dir}",
             f"--split-results-dir {self.split_results_dir}",
             f"--job-array {self.main_slurm_args['array']}",
+            f"--ntasks-per-job {self.main_slurm_args['ntasks']}",
             f"--utils-parent-dir {utils_parent_dir}",
         ]
         if '_main_python_script_extra_args' in self.keys():
@@ -241,6 +242,7 @@ class EmbarrassinglyParallelJobs(JobGroup):
         dependency_ids=None,
         dependency_conditions=None
     ):
+        print("self.main_slurm_args['ntasks']: ", self.main_slurm_args['ntasks'])
         split_job = SingleJob(
             dict(
                 program=split_python_script,

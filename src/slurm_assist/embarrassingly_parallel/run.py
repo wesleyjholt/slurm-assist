@@ -13,13 +13,15 @@ def main(
     batched_results_dir: str,
     split_results_dir: str,
     job_array: str,
-    ntasks_per_job: Optional[int] = None,
+    ntasks_per_job: int | None,
     **kwargs
 ):
     """Main entry point.
 
     Note that array_id is the job array task ID, not the SLURM job ID.
     """
+    print('ntasks_per_job: ', ntasks_per_job)
+    print(type(ntasks_per_job))
     if ntasks_per_job is not None:
         from mpi4py import MPI
         batch_id = MPI.COMM_WORLD.rank
@@ -27,9 +29,12 @@ def main(
     array_id_ = to_zero_based_indexing(array_id)
 
     # Load data batch
+    print(job_array_[array_id_])
     if ntasks_per_job is None:
+        print('Here?')
         data_batch_filepath = os.path.join(batched_data_dir, f'data_{job_array_[array_id_]}.pkl')
     else:
+        print('Or here?')
         data_batch_filepath = os.path.join(batched_data_dir, f'data_{job_array_[array_id_]}_{batch_id}.pkl')
     ids_and_data_batch = load_pickle(data_batch_filepath)
     if len(ids_and_data_batch) == 0:
@@ -95,6 +100,7 @@ if __name__=='__main__':
     parser.add_argument('--batched-results-dir', type=str)
     parser.add_argument('--split-results-dir', type=str)
     parser.add_argument('--job-array', type=str)
+    parser.add_argument('--ntasks-per-job', type=str)
     args, unknown_args = parser.parse_known_args()
 
     t1 = time.time()
@@ -106,6 +112,7 @@ if __name__=='__main__':
     unknown_args_dict = parse_cli_args(unknown_args)
     sys.path.append(args.single_run_module_parent_dir)
     single_run_fn = getattr(importlib.import_module(args.single_run_module), args.single_run_fn)
+    print('args.ntasks_per_job: ', args.ntasks_per_job)
     main(
         array_id=args.array_id, 
         single_run_fn=single_run_fn,
@@ -113,6 +120,7 @@ if __name__=='__main__':
         batched_results_dir=args.batched_results_dir,
         split_results_dir=args.split_results_dir,
         job_array=args.job_array,
+        ntasks_per_job=int(args.ntasks_per_job) if str(args.ntasks_per_job).lower() != 'none' else None,
         **unknown_args_dict
     )
     t2 = time.time()

@@ -57,6 +57,7 @@ def main(
         return [a[i*k+min(i, m):(i+1)*k+min(i+1, m)] for i in range(n)]
 
     if ntasks_per_job is None:
+        print('ntasks_per_job: ', ntasks_per_job)
         data_batches = _split_list(data, num_jobs)
         for i, batch in enumerate(data_batches):
             data_batch_filepath = os.path.join(batched_data_dir, f'data_{job_array_[i]}.pkl')
@@ -90,7 +91,7 @@ if __name__ == '__main__':
     parser.add_argument('--input-file', '--input_file', type=str, help='Path to the input data file.')
     parser.add_argument('--batched-data-dir', '--batched_data_dir', type=str, help='Directory to save the batched data.')
     parser.add_argument('--job-array', '--job_array', type=str, help='Array of job numbers.')
-    parser.add_argument('--ntasks-per-job', '--ntasks_per_job', type=int, default=1, help='Number of tasks per job.')
+    parser.add_argument('--ntasks-per-job', '--ntasks_per_job', type=int, help='Number of tasks per job.')
     parser.add_argument('--generate-new-ids', '--generate_new_ids', action='store_true', help='Generate new IDs for the data entries.')
     args, unknown_args = parser.parse_known_args()
 
@@ -107,6 +108,7 @@ if __name__ == '__main__':
         from utils import load_csv, save_pickle, parse_slurm_array
     except:
         raise Exception('Could not import utils module. Make sure the --parent-dir argument is pointing to the package\'s embarrassingly_parallel directory.')
+    print('args.ntasks_per_job: ', args.ntasks_per_job)
     main(args.input_file, args.batched_data_dir, args.job_array, args.ntasks_per_job, args.generate_new_ids)
     t2 = time.time()
     print('Elapsed time for splitting data: {:.5f}'.format(t2 - t1))

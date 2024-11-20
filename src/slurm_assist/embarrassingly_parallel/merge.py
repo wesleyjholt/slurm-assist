@@ -35,7 +35,7 @@ def main(
                 
             except:
                 print(f'Failed to load {results_batch_file}')
-
+    else:
         for k in range(num_jobs*ntasks_per_job):
             i = k // ntasks_per_job
             j = k % ntasks_per_job
